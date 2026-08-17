@@ -2,64 +2,77 @@
 <html>
 <head>
     <style>
-        body { margin: 0; background: #333; display: flex; flex-direction: column; align-items: center; }
-        canvas { background: #fff; border: 5px solid #000; cursor: crosshair; }
-        #ui { color: white; font-size: 20px; padding: 10px; }
+        body { background: #222; color: white; display: flex; flex-direction: column; align-items: center; font-family: Arial; }
+        canvas { background: #eee; border: 4px solid #fff; }
+        #menu { display: flex; gap: 5px; margin-top: 10px; }
+        .slot { width: 60px; height: 60px; border: 2px solid white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     </style>
 </head>
 <body>
-    <div id="ui">金錢: <span id="money">0</span> | [點擊畫布或按手把 A 鍵召喚]</div>
-    <canvas id="game" width="800" height="300"></canvas>
+    <h3>火柴人塔防戰</h3>
+    <canvas id="game" width="800" height="200"></canvas>
+    <div id="menu"></div>
 
 <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    let money = 100;
+    
+    // 1. 角色屬性定義 (10個角色)
+    const unitTypes = Array.from({length: 10}, (_, i) => ({
+        id: i,
+        color: `hsl(${i * 36}, 100%, 50%)`,
+        size: 5 + i * 2,
+        speed: 0.5 + i * 0.2,
+        damage: 10 + i * 5,
+        cooldown: 1000 + i * 500,
+        lastSpawn: 0
+    }));
+
     let units = [];
-    let lastTime = 0;
+    let money = 100;
 
-    // 遊戲循環
-    function gameLoop(timestamp) {
-        // 自動賺錢
-        if (timestamp - lastTime > 1000) { money += 10; lastTime = timestamp; }
-        document.getElementById('money').innerText = money;
+    // 2. 建立 UI 選單
+    const menu = document.getElementById('menu');
+    unitTypes.forEach(u => {
+        let div = document.createElement('div');
+        div.className = 'slot';
+        div.style.backgroundColor = u.color;
+        div.innerText = `Lv${u.id+1}`;
+        div.onclick = () => spawn(u);
+        menu.appendChild(div);
+    });
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 繪製與更新火柴人
-        units.forEach((u, i) => {
-            u.x += u.speed;
-            drawStickman(u.x, 250);
-            if (u.x > canvas.width) units.splice(i, 1);
-        });
-
-        // 控制器輸入檢測
-        const gamepads = navigator.getGamepads();
-        if (gamepads[0] && gamepads[0].buttons[0].pressed) spawnUnit(); // 假設按鈕 A 是 0
-
-        requestAnimationFrame(gameLoop);
-    }
-
-    function drawStickman(x, y) {
-        ctx.beginPath();
-        ctx.arc(x, y - 40, 10, 0, Math.PI * 2); // 頭
-        ctx.moveTo(x, y - 30); ctx.lineTo(x, y - 10); // 身體
-        ctx.moveTo(x, y - 30); ctx.lineTo(x - 10, y - 20); // 左手
-        ctx.moveTo(x, y - 30); ctx.lineTo(x + 10, y - 20); // 右手
-        ctx.moveTo(x, y - 10); ctx.lineTo(x - 10, y); // 左腳
-        ctx.moveTo(x, y - 10); ctx.lineTo(x + 10, y); // 右腳
-        ctx.stroke();
-    }
-
-    function spawnUnit() {
-        if (money >= 50) {
-            units.push({ x: 50, speed: 2 });
-            money -= 50;
+    function spawn(u) {
+        let now = Date.now();
+        if (now - u.lastSpawn > u.cooldown) {
+            units.push({ ...u, x: 50, y: 150 });
+            u.lastSpawn = now;
         }
     }
 
-    canvas.addEventListener('mousedown', spawnUnit);
-    requestAnimationFrame(gameLoop);
+    function update() {
+        ctx.clearRect(0, 0, 800, 200);
+        
+        // 畫塔
+        ctx.fillStyle = 'blue'; ctx.fillRect(0, 50, 50, 150); // 己方塔
+        ctx.fillStyle = 'red'; ctx.fillRect(750, 50, 50, 150); // 敵方塔
+
+        // 更新火柴人
+        units.forEach((u, i) => {
+            u.x += u.speed;
+            ctx.fillStyle = u.color;
+            ctx.fillRect(u.x, 150 - u.size, u.size, u.size);
+            if (u.x > 750) units.splice(i, 1);
+        });
+
+        // 簡單控制器支援
+        const gp = navigator.getGamepads()[0];
+        if (gp && gp.buttons[0].pressed) { /* 這裡可加入手把邏輯 */ }
+
+        requestAnimationFrame(update);
+    }
+
+    update();
 </script>
 </body>
 </html>
