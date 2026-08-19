@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>貓咪太空狼人殺 - 玩家自主投票版</title>
+    <title>貓咪太空狼人殺 - 大地圖與連線解謎版</title>
     <style>
         body {
             margin: 0;
@@ -37,7 +37,7 @@
 
         canvas {
             display: block;
-            background: #1b263b;
+            background: #0b132b;
             cursor: pointer;
         }
 
@@ -114,14 +114,14 @@
 </head>
 <body>
 
-    <h1>🐱 貓咪太空狼人殺 (自主投票特仕版)</h1>
+    <h1>🐱 貓咪太空狼人殺 (大視野限制與連線解謎版)</h1>
     
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="450"></canvas>
     </div>
 
     <div class="info-panel">
-        操作方式：**W,A,S,D** 移動 | **E 鍵**：互動/解任務 | **X 鍵**：殺手擊殺 | **Y 鍵**：發起緊急會議
+        操作方式：**W,A,S,D** 移動 | **E 鍵**：修理任務/開會 | **X 鍵**：殺手擊殺 | **Y 鍵**：緊急會議
     </div>
 
     <div class="controller-ui">
@@ -140,7 +140,7 @@
         </div>
 
         <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;">
-            <span style="font-size: 0.8rem; color: #ffcc00; font-weight: bold;" id="game-status-text">身份載入中...</span>
+            <span style="font-size: 0.8rem; color: #ffcc00; font-weight: bold;" id="game-status-text">身分載入中...</span>
             <div style="display: flex; gap: 5px;">
                 <button class="control-btn" id="btn-action" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem;">互動(E)</button>
                 <button class="control-btn" id="btn-kill" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem; background: #500; border-color: #800;">擊殺(X)</button>
@@ -163,50 +163,66 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        const worldWidth = 1600;
-        const worldHeight = 1200;
+        // 更大的地圖尺寸
+        const worldWidth = 2400;
+        const worldHeight = 1800;
 
         let camera = { x: 0, y: 0 };
 
         let gameState = {
             tasksCompleted: 0,
             totalTasks: 6,
-            message: "遊戲開始！探索寬敞流暢的無死路太空艙。",
+            message: "遊戲開始！地圖擴大，請小心黑暗中的視線盲區。",
             messageTimer: 180,
             over: false,
             winnerTitle: "",
             winnerSub: "",
             inMeeting: false,
-            meetingStep: 'voting', // 'voting' 或 'result'
+            meetingStep: 'voting',
             meetingText: "",
-            voteButtons: [] // 儲存會議中點擊按鈕的碰撞區域
+            voteButtons: [],
+            
+            // 連線小遊戲狀態
+            inMinigame: false,
+            activeTask: null,
+            minigameWires: [], // [{color, leftY, rightY, connected}]
+            selectedLeftNode: null,
+            minigameButtons: []
         };
 
-        // 寬敞、全通透、無死路的地圖
+        // 擴大後的豐富太空艙牆壁配置
         const walls = [
-            { x: 40, y: 40, w: 1520, h: 20 },
-            { x: 40, y: 1140, w: 1520, h: 20 },
-            { x: 40, y: 40, w: 20, h: 1120 },
-            { x: 1540, y: 40, w: 20, h: 1120 },
+            { x: 40, y: 40, w: 2320, h: 20 },
+            { x: 40, y: 1740, w: 2320, h: 20 },
+            { x: 40, y: 40, w: 20, h: 1700 },
+            { x: 2340, y: 40, w: 20, h: 1700 },
 
-            { x: 350, y: 300, w: 250, h: 30 },
-            { x: 350, y: 300, w: 30, h: 220 },
-            { x: 1000, y: 300, w: 250, h: 30 },
-            { x: 1220, y: 300, w: 30, h: 220 },
-            { x: 350, y: 880, w: 250, h: 30 },
-            { x: 350, y: 680, w: 30, h: 220 },
-            { x: 1000, y: 880, w: 250, h: 30 },
-            { x: 1220, y: 680, w: 30, h: 220 },
-            { x: 700, y: 500, w: 200, h: 200 }
+            // 內部隔間與房間
+            { x: 400, y: 300, w: 400, h: 30 },
+            { x: 400, y: 300, w: 30, h: 300 },
+            { x: 1600, y: 300, w: 400, h: 30 },
+            { x: 1970, y: 300, w: 30, h: 300 },
+
+            { x: 400, y: 1470, w: 400, h: 30 },
+            { x: 400, y: 1200, w: 30, h: 300 },
+            { x: 1600, y: 1470, w: 400, h: 30 },
+            { x: 1970, y: 1200, w: 30, h: 300 },
+
+            { x: 1000, y: 750, w: 400, h: 30 },
+            { x: 1000, y: 550, w: 30, h: 230 },
+            { x: 1370, y: 550, w: 30, h: 230 },
+            { x: 1000, y: 1020, w: 400, h: 30 },
+            { x: 1000, y: 1020, w: 30, h: 230 },
+            { x: 1370, y: 1020, w: 30, h: 230 }
         ];
 
         const tasks = [
-            { x: 180, y: 150, name: "導航控制板", completed: false, radius: 25 },
-            { x: 1420, y: 150, name: "防護罩充能", completed: false, radius: 25 },
-            { x: 180, y: 1020, name: "通訊頻率調整", completed: false, radius: 25 },
-            { x: 1420, y: 1020, name: "引擎爐冷卻", completed: false, radius: 25 },
-            { x: 800, y: 150, name: "中央控制台", completed: false, radius: 25 },
-            { x: 800, y: 1050, name: "核芯維護", completed: false, radius: 25 }
+            { x: 200, y: 150, name: "導航控制板", completed: false, radius: 25 },
+            { x: 2200, y: 150, name: "防護罩充能", completed: false, radius: 25 },
+            { x: 200, y: 1620, name: "通訊頻率調整", completed: false, radius: 25 },
+            { x: 2200, y: 1620, name: "引擎爐冷卻", completed: false, radius: 25 },
+            { x: 1200, y: 200, name: "中央控制台", completed: false, radius: 25 },
+            { x: 1200, y: 1600, name: "核芯維護", completed: false, radius: 25 }
         ];
 
         const catData = [
@@ -227,7 +243,8 @@
             gameState.tasksCompleted = 0;
             gameState.over = false;
             gameState.inMeeting = false;
-            gameState.message = "遊戲開始！探索寬敞流暢的無死路太空艙。";
+            gameState.inMinigame = false;
+            gameState.message = "遊戲開始！地圖擴大，請小心黑暗中的視線盲區。";
             gameState.messageTimer = 180;
 
             tasks.forEach(t => t.completed = false);
@@ -235,8 +252,8 @@
             const killerIndex = Math.floor(Math.random() * 8);
 
             for (let i = 0; i < 8; i++) {
-                let spawnX = 250 + (i % 4) * 320;
-                let spawnY = 250 + Math.floor(i / 4) * 500;
+                let spawnX = 300 + (i % 4) * 500;
+                let spawnY = 300 + Math.floor(i / 4) * 600;
 
                 cats.push({
                     id: i,
@@ -283,6 +300,10 @@
                 }
                 return;
             }
+            if (gameState.inMinigame) {
+                if (e.key === 'Escape') gameState.inMinigame = false;
+                return;
+            }
             if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
             if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
@@ -305,7 +326,7 @@
             ['mousedown', 'touchstart'].forEach(evt => {
                 btn.addEventListener(evt, (e) => { 
                     e.preventDefault(); 
-                    if (gameState.over) return;
+                    if (gameState.over || gameState.inMinigame) return;
                     keys[keyName] = true; 
                     btn.classList.add('active'); 
                 });
@@ -326,10 +347,13 @@
         document.getElementById('btn-x').addEventListener('click', () => { if(!gameState.over) triggerKill(); });
         document.getElementById('btn-y').addEventListener('click', () => { if(!gameState.over) triggerMeeting(); });
         document.getElementById('btn-a').addEventListener('click', () => { if(!gameState.over) triggerAction(); });
-        document.getElementById('btn-b').addEventListener('click', () => { if(!gameState.over) showMessage("【取消】關閉選單"); });
+        document.getElementById('btn-b').addEventListener('click', () => { 
+            if(gameState.inMinigame) { gameState.inMinigame = false; }
+            else { showMessage("【取消】關閉選單"); }
+        });
 
         function showMessage(text) {
-            if(gameState.over || gameState.inMeeting) return;
+            if(gameState.over || gameState.inMeeting || gameState.inMinigame) return;
             gameState.message = text;
             gameState.messageTimer = 120;
         }
@@ -346,31 +370,56 @@
             return false;
         }
 
+        // 觸發互動與連線解謎小遊戲
         function triggerAction() {
             player = cats[0];
             if(!player.isAlive || gameState.over || gameState.inMeeting) return;
-            let interacted = false;
+            
+            if (gameState.inMinigame) return;
+
+            let foundTask = null;
             for (let task of tasks) {
                 let dist = Math.hypot(player.x - task.x, player.y - task.y);
                 if (dist < 45 && !task.completed) {
-                    task.completed = true;
-                    gameState.tasksCompleted++;
-                    showMessage(`完成任務：${task.name} (${gameState.tasksCompleted}/${gameState.totalTasks})`);
-                    interacted = true;
-                    if (gameState.tasksCompleted >= gameState.totalTasks) {
-                        endGame("船員陣營 (CREW-MATES)", "所有太空任務已成功修復完畢！");
-                    }
+                    foundTask = task;
                     break;
                 }
             }
-            if (!interacted) {
+
+            if (foundTask) {
+                // 開啟連線小遊戲
+                gameState.activeTask = foundTask;
+                gameState.inMinigame = true;
+                gameState.selectedLeftNode = null;
+                
+                // 隨機產生 3 條連線配對
+                let colors = [
+                    { name: 'red', hex: '#ff4444' },
+                    { name: 'blue', hex: '#3b82f6' },
+                    { name: 'green', hex: '#22c55e' }
+                ];
+                // 隨機打散順序
+                let leftOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
+                let rightOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
+
+                gameState.minigameWires = [];
+                for(let i=0; i<3; i++) {
+                    gameState.minigameWires.push({
+                        id: i,
+                        color: colors[i].hex,
+                        leftIndex: leftOrder[i],
+                        rightIndex: rightOrder[i],
+                        connected: false
+                    });
+                }
+            } else {
                 showMessage("附近沒有未完成的任務設施！");
             }
         }
 
         function triggerKill() {
             player = cats[0];
-            if(!player.isAlive || !player.isKiller || gameState.over || gameState.inMeeting) return;
+            if(!player.isAlive || !player.isKiller || gameState.over || gameState.inMeeting || gameState.inMinigame) return;
             let killedAny = false;
             for (let cat of cats) {
                 if (cat.id !== player.id && cat.isAlive) {
@@ -391,13 +440,12 @@
 
         function triggerMeeting() {
             player = cats[0];
-            if(!player.isAlive || gameState.over || gameState.inMeeting) return;
+            if(!player.isAlive || gameState.over || gameState.inMeeting || gameState.inMinigame) return;
             gameState.inMeeting = true;
             gameState.meetingStep = 'voting';
             gameState.meetingText = "請點擊你想投票懷疑的貓咪（或選擇略過投票）：";
         }
 
-        // 玩家進行投票的結算處理
         function processPlayerVote(votedTargetName) {
             gameState.meetingStep = 'result';
             
@@ -405,14 +453,12 @@
             let votes = {};
             aliveCats.forEach(c => { votes[c.name] = 0; });
 
-            // 記錄玩家的投票
             if (votedTargetName !== 'SKIP') {
                 votes[votedTargetName]++;
             }
 
-            // 剩餘 NPC 貓咪隨機投票
             aliveCats.forEach(cat => {
-                if (cat.isPlayer) return; // 玩家已經投過
+                if (cat.isPlayer) return;
                 let candidates = aliveCats.filter(c => c.id !== cat.id);
                 if (candidates.length > 0) {
                     let votedTarget = candidates[Math.floor(Math.random() * candidates.length)];
@@ -447,7 +493,6 @@
                 }
             }
 
-            // 顯示結果 3.5 秒後自動結束會議並檢查勝負
             setTimeout(() => {
                 gameState.inMeeting = false;
                 checkWinConditions();
@@ -472,7 +517,7 @@
         }
 
         function updateCats() {
-            if(gameState.over || gameState.inMeeting) return;
+            if(gameState.over || gameState.inMeeting || gameState.inMinigame) return;
             player = cats[0];
 
             if(player.isAlive) {
@@ -493,6 +538,7 @@
                 }
             }
 
+            // 相機跟隨玩家
             camera.x = player.x - canvas.width / 2;
             camera.y = player.y - canvas.height / 2;
             camera.x = Math.max(0, Math.min(worldWidth - canvas.width, camera.x));
@@ -649,6 +695,7 @@
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
 
+            // 繪製地圖網格
             ctx.strokeStyle = '#1c2541';
             ctx.lineWidth = 1;
             for (let i = 0; i < worldWidth; i += 40) {
@@ -658,6 +705,7 @@
                 ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(worldWidth, j); ctx.stroke();
             }
 
+            // 任務設施
             tasks.forEach(task => {
                 ctx.beginPath();
                 ctx.arc(task.x, task.y, task.radius, 0, Math.PI * 2);
@@ -675,6 +723,7 @@
                 ctx.fillText(task.name, task.x, task.y + 18);
             });
 
+            // 牆壁
             ctx.fillStyle = '#3a506b';
             ctx.strokeStyle = '#5bc0be';
             ctx.lineWidth = 3;
@@ -683,11 +732,41 @@
                 ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
             });
 
+            // 貓咪
             cats.forEach(cat => drawCat(cat));
 
             ctx.restore();
 
-            if (gameState.messageTimer > 0 && !gameState.inMeeting && !gameState.over) {
+            // ================= 視野限制 (視覺黑幕與玩家周圍透光效果) =================
+            if (!gameState.over && !gameState.inMeeting && !gameState.inMinigame) {
+                ctx.save();
+                // 建立整張畫面的黑色遮罩
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = 'rgba(5, 8, 18, 0.92)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 在玩家位置挖開一個圓形視野 (視角不能看太遠)
+                let playerScreenX = player.x - camera.x;
+                let playerScreenY = player.y - camera.y;
+                let visionRadius = 180; // 視角半徑
+
+                ctx.globalCompositeOperation = 'destination-out';
+                let gradient = ctx.createRadialGradient(
+                    playerScreenX, playerScreenY, 40,
+                    playerScreenX, playerScreenY, visionRadius
+                );
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(playerScreenX, playerScreenY, visionRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 訊息提示
+            if (gameState.messageTimer > 0 && !gameState.inMeeting && !gameState.over && !gameState.inMinigame) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(120, 15, 560, 35);
                 ctx.strokeStyle = '#ffcc00';
@@ -698,7 +777,118 @@
                 ctx.fillText(gameState.message, 400, 37);
             }
 
-            // 緊急會議與投票 UI 畫面
+            // ================= 連線解謎小遊戲 UI =================
+            if (gameState.inMinigame) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 4;
+                ctx.fillRect(150, 60, 500, 330);
+                ctx.strokeRect(150, 60, 500, 330);
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`🔧 修理任務：${gameState.activeTask.name} 🔧`, 400, 95);
+
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '13px sans-serif';
+                ctx.fillText("請點擊左側的色點，再點擊右側的相同顏色來連接電路！", 400, 125);
+
+                gameState.minigameButtons = [];
+
+                let startY = 170;
+                let spacing = 65;
+
+                // 繪製連線中的線段
+                gameState.minigameWires.forEach(wire => {
+                    let lx = 260;
+                    let ly = startY + wire.leftIndex * spacing;
+                    let rx = 540;
+                    let ry = startY + wire.rightIndex * spacing;
+
+                    if (wire.connected) {
+                        ctx.strokeStyle = wire.color;
+                        ctx.lineWidth = 5;
+                        ctx.beginPath();
+                        ctx.moveTo(lx, ly);
+                        ctx.lineTo(rx, ry);
+                        ctx.stroke();
+                    }
+                });
+
+                // 如果正在選取左側節點，畫一條跟隨滑鼠的動態預覽線
+                // (此處以簡化點擊處理)
+
+                // 繪製左側節點
+                for (let i = 0; i < 3; i++) {
+                    let wire = gameState.minigameWires.find(w => w.leftIndex === i);
+                    let lx = 260;
+                    let ly = startY + i * spacing;
+
+                    ctx.fillStyle = wire.connected ? '#1e293b' : wire.color;
+                    ctx.strokeStyle = wire.connected ? '#475569' : '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    if (gameState.selectedLeftNode === i && !wire.connected) {
+                        ctx.strokeStyle = '#ffcc00';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(lx - 24, ly - 24, 48, 48);
+                    }
+
+                    gameState.minigameButtons.push({
+                        type: 'left', index: i, x: lx, y: ly, radius: 18
+                    });
+                }
+
+                // 繪製右側節點
+                for (let i = 0; i < 3; i++) {
+                    let wire = gameState.minigameWires.find(w => w.rightIndex === i);
+                    let rx = 540;
+                    let ry = startY + i * spacing;
+
+                    ctx.fillStyle = wire.connected ? '#1e293b' : wire.color;
+                    ctx.strokeStyle = wire.connected ? '#475569' : '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(rx, ry, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    gameState.minigameButtons.push({
+                        type: 'right', index: i, x: rx, y: ry, radius: 18
+                    });
+                }
+
+                // 檢查是否全部完成
+                let allDone = gameState.minigameWires.every(w => w.connected);
+                if (allDone) {
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("🎉 恭喜！電路修復成功！", 400, 360);
+
+                    setTimeout(() => {
+                        if (gameState.inMinigame) {
+                            gameState.inMinigame = false;
+                            gameState.activeTask.completed = true;
+                            gameState.tasksCompleted++;
+                            showMessage(`成功修復任務：${gameState.activeTask.name} (${gameState.tasksCompleted}/${gameState.totalTasks})`);
+                            if (gameState.tasksCompleted >= gameState.totalTasks) {
+                                endGame("船員陣營 (CREW-MATES)", "所有太空任務已成功修復完畢！");
+                            }
+                        }
+                    }, 800);
+                }
+            }
+
+            // ================= 緊急會議 UI =================
             if (gameState.inMeeting) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -733,7 +923,6 @@
                         let bx = startX + col * 185;
                         let by = startY + row * 55;
 
-                        // 繪製投票按鈕
                         ctx.fillStyle = cat.isPlayer ? '#334155' : '#27272a';
                         ctx.strokeStyle = cat.color;
                         ctx.lineWidth = 2;
@@ -745,13 +934,11 @@
                         ctx.textAlign = 'left';
                         ctx.fillText(`投給: ${cat.name}`, bx + 12, by + 27);
 
-                        // 儲存可點擊區域
                         gameState.voteButtons.push({
                             x: bx, y: by, w: btnWidth, h: btnHeight, name: cat.name
                         });
                     });
 
-                    // 略過投票按鈕 (Skip)
                     let skipX = 305;
                     let skipY = 330;
                     let skipW = 190;
@@ -780,6 +967,7 @@
                 }
             }
 
+            // ================= 遊戲結束畫面 =================
             if (gameState.over) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -816,7 +1004,7 @@
             }
         }
 
-        // 滑鼠點擊事件：支援結算重啟、以及會議中的自主投票點擊
+        // 滑鼠點擊事件：支援重啟、會議投票、以及連線解謎點擊
         canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -828,6 +1016,28 @@
                 return;
             }
 
+            // 連線小遊戲點擊判定
+            if (gameState.inMinigame) {
+                for (let btn of gameState.minigameButtons) {
+                    let dist = Math.hypot(clickX - btn.x, clickY - btn.y);
+                    if (dist <= btn.radius + 5) {
+                        if (btn.type === 'left') {
+                            gameState.selectedLeftNode = btn.index;
+                        } else if (btn.type === 'right' && gameState.selectedLeftNode !== null) {
+                            // 檢查左右顏色是否配對正確
+                            let leftWire = gameState.minigameWires.find(w => w.leftIndex === gameState.selectedLeftNode);
+                            if (leftWire && leftWire.rightIndex === btn.index) {
+                                leftWire.connected = true;
+                            }
+                            gameState.selectedLeftNode = null;
+                        }
+                        break;
+                    }
+                }
+                return;
+            }
+
+            // 會議投票點擊判定
             if (gameState.inMeeting && gameState.meetingStep === 'voting') {
                 for (let btn of gameState.voteButtons) {
                     if (clickX >= btn.x && clickX <= btn.x + btn.w &&
