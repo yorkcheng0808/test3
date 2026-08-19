@@ -3,150 +3,747 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高擬真 3D 坦克模擬器 - 完整版</title>
+    <title>貓咪太空狼人殺 - 完整勝負結算特仕版</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0b0b0b; font-family: 'Segoe UI', sans-serif; user-select: none; }
-        #ui-layer { position: absolute; top: 20px; left: 20px; pointer-events: none; }
-        #info {
-            color: #d1d1d1; background: rgba(15, 15, 15, 0.85); padding: 18px 24px; border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); border-left: 5px solid #d4af37;
-            backdrop-filter: blur(5px); margin-bottom: 10px;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
         }
-        #gamepad-status {
-            color: #ffcc00; background: rgba(0, 0, 0, 0.7); padding: 10px 15px;
-            border-radius: 5px; font-weight: bold; display: inline-block;
+
+        h1 {
+            margin: 5px 0;
+            font-size: 1.4rem;
+            color: #ffcc00;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
-        #info h2 { margin: 0 0 10px 0; font-size: 18px; color: #d4af37; }
-        #info p { margin: 6px 0; font-size: 13px; }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 4px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0d1b2a;
+        }
+
+        canvas {
+            display: block;
+            background: #1b263b;
+        }
+
+        /* 仿 Switch Pro 控制器介面 */
+        .controller-ui {
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            margin-top: 10px;
+            background: #1e1e1e;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-sizing: border-box;
+            border: 2px solid #444;
+        }
+
+        .stick-area, .button-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-btn {
+            background: #333;
+            color: white;
+            border: 2px solid #555;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s, transform 0.1s;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .control-btn:active, .control-btn.active {
+            background: #ffcc00;
+            color: #000;
+            transform: scale(0.95);
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 36px);
+            grid-template-rows: repeat(3, 36px);
+            gap: 2px;
+        }
+
+        .d-pad button {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #555;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .d-pad button:active {
+            background: #ffcc00;
+            color: #000;
+        }
+
+        .info-panel {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-top: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <div id="info">
-            <h2>★ 主戰坦克作戰模擬器</h2>
-            <p><b>W/S 前進後退, A/D 左右轉向</b></p>
-            <p><b>滑鼠：瞄準與射擊</b></p>
-            <p><b>手把：左類比搖桿移動, A鍵射擊</b></p>
-        </div>
-        <div id="gamepad-status">搖桿未連接 (請按一下搖桿任意鍵)</div>
+    <h1>🐱 貓咪太空狼人殺 (完整勝負結算版)</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <div class="info-panel">
+        操作方式：**W,A,S,D** 移動 | **E 鍵**：互動/做任務 | **X 鍵**：殺手擊殺 | **Y 鍵**：發起緊急會議
+    </div>
+
+    <!-- 模擬 Switch Pro 控制器佈局 -->
+    <div class="controller-ui">
+        <div class="stick-area">
+            <div style="font-size: 0.8rem; color: #888;">左搖桿</div>
+            <div class="d-pad">
+                <div></div>
+                <button id="btn-up">▲</button>
+                <div></div>
+                <button id="btn-left">◀</button>
+                <button id="btn-center" style="background: #111; border:none;"></button>
+                <button id="btn-right">▶</button>
+                <div></div>
+                <button id="btn-down">▼</button>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;">
+            <span style="font-size: 0.8rem; color: #ffcc00; font-weight: bold;" id="game-status-text">身份載入中...</span>
+            <div style="display: flex; gap: 5px;">
+                <button class="control-btn" id="btn-action" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem;">互動(E)</button>
+                <button class="control-btn" id="btn-kill" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem; background: #500; border-color: #800;">擊殺(X)</button>
+                <button class="control-btn" id="btn-meeting" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem; background: #005; border-color: #008;">開會(Y)</button>
+            </div>
+        </div>
+
+        <div class="button-area">
+            <div style="font-size: 0.8rem; color: #888;">動作按鍵</div>
+            <div style="display: flex; gap: 8px;">
+                <button class="control-btn" id="btn-x">X</button>
+                <button class="control-btn" id="btn-y">Y</button>
+                <button class="control-btn" id="btn-a">A</button>
+                <button class="control-btn" id="btn-b">B</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // 1. 場景
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x3a4248);
-        scene.fog = new THREE.FogExp2(0x3a4248, 0.01);
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
+        // 遊戲全域狀態
+        let gameState = {
+            tasksCompleted: 0,
+            totalTasks: 4,
+            message: "遊戲開始！請確認你的身分與任務。",
+            messageTimer: 180,
+            over: false,
+            winnerTitle: "",
+            winnerSub: "",
+            inMeeting: false,
+            meetingText: ""
+        };
 
-        // 燈光
-        const ambientLight = new THREE.AmbientLight(0xddeeff, 0.5);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
-        dirLight.position.set(100, 150, 100);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+        // 地圖牆壁障礙物
+        const walls = [
+            { x: 40, y: 40, w: 720, h: 20 },
+            { x: 40, y: 390, w: 720, h: 20 },
+            { x: 40, y: 40, w: 20, h: 140 },
+            { x: 40, y: 250, w: 20, h: 160 },
+            { x: 740, y: 40, w: 20, h: 370 },
+            { x: 240, y: 40, w: 20, h: 140 },
+            { x: 560, y: 40, w: 20, h: 140 },
+            { x: 320, y: 250, w: 160, h: 20 },
+            { x: 240, y: 300, w: 20, h: 90 },
+            { x: 560, y: 300, w: 20, h: 90 }
+        ];
 
-        // 地板
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x3b4438 }));
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        // 任務點
+        const tasks = [
+            { x: 100, y: 100, name: "導航面板", completed: false, radius: 25 },
+            { x: 700, y: 100, name: "防護罩", completed: false, radius: 25 },
+            { x: 100, y: 340, name: "通訊裝置", completed: false, radius: 25 },
+            { x: 700, y: 340, name: "引擎爐", completed: false, radius: 25 }
+        ];
 
-        // 坦克群組
-        const tank = new THREE.Group();
-        const paintMat = new THREE.MeshStandardMaterial({ color: 0x475238, roughness: 0.5 });
-        const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
-        
-        // 車體
-        const hull = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.9, 5.6), paintMat);
-        hull.position.y = 0.8;
-        tank.add(hull);
+        // 貓咪名稱清單
+        const catNames = ["玩家貓", "小橘貓", "阿花", "黑鼻", "小白", "三花", "斑斑", "乳牛貓"];
+        let cats = [];
 
-        // 砲塔
-        const turretGroup = new THREE.Group();
-        turretGroup.position.y = 1.45;
-        const turret = new THREE.Mesh(new THREE.SphereGeometry(1.3, 24, 16).scale(1.1, 0.7, 1.3), paintMat);
-        turretGroup.add(turret);
+        function initGame() {
+            cats = [];
+            gameState.tasksCompleted = 0;
+            gameState.over = false;
+            gameState.inMeeting = false;
+            gameState.message = "遊戲開始！請確認你的身分與任務。";
+            gameState.messageTimer = 180;
 
-        // 砲管
-        const barrelGroup = new THREE.Group();
-        barrelGroup.position.set(0, 0.4, 0.8);
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 5, 16).rotateX(Math.PI/2), darkMat);
-        barrel.position.z = 2.4;
-        barrelGroup.add(barrel);
-        turretGroup.add(barrelGroup);
-        tank.add(turretGroup);
-        scene.add(tank);
+            tasks.forEach(t => t.completed = false);
 
-        // 控制變數
-        const keys = { w: false, a: false, s: false, d: false };
-        let tankSpeed = 0;
-        const roadWheels = []; // 動態輪子
+            const killerIndex = Math.floor(Math.random() * 8);
 
-        // 輸入處理
-        window.addEventListener('keydown', (e) => { if(e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = true; });
-        window.addEventListener('keyup', (e) => { if(e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = false; });
+            for (let i = 0; i < 8; i++) {
+                cats.push({
+                    id: i,
+                    name: catNames[i],
+                    x: 150 + (i % 4) * 140,
+                    y: 120 + Math.floor(i / 4) * 150,
+                    radius: 18,
+                    speed: 2.2,
+                    isPlayer: (i === 0),
+                    isKiller: (i === killerIndex),
+                    isAlive: true,
+                    isMoving: false,
+                    animTimer: Math.random() * 10,
+                    direction: 1,
+                    wanderTimer: 0,
+                    targetX: 400,
+                    targetY: 225,
+                    actionCooldown: 0
+                });
+            }
 
-        // 射擊邏輯
-        const bullets = [];
-        function triggerFire() {
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({color: 0xffaa00}));
-            const pos = new THREE.Vector3(0, 0, 5.0).applyMatrix4(barrelGroup.matrixWorld);
-            bullet.position.copy(pos);
-            bullet.userData = { dir: new THREE.Vector3(0,0,1).applyQuaternion(turretGroup.quaternion).applyQuaternion(tank.quaternion), life: 100 };
-            scene.add(bullet);
-            bullets.push(bullet);
+            let player = cats[0];
+            const statusEl = document.getElementById('game-status-text');
+            if (player.isKiller) {
+                statusEl.innerText = "【身分：殺手】暗中擊殺所有船員！";
+                statusEl.style.color = "#ff4444";
+            } else {
+                statusEl.innerText = "【身分：船員】修護任務並找出殺手！";
+                statusEl.style.color = "#44ff44";
+            }
         }
-        window.addEventListener('mousedown', triggerFire);
 
-        // 搖桿邏輯
-        const gpStatus = document.getElementById('gamepad-status');
-        let gamepadIndex = null;
-        window.addEventListener("gamepadconnected", (e) => { gamepadIndex = e.gamepad.index; gpStatus.innerText = "已連: " + e.gamepad.id; gpStatus.style.color = "#4CAF50"; });
+        initGame();
+        let player = cats[0];
 
-        // 動畫
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // 手把輸入
-            const gp = navigator.getGamepads()[gamepadIndex];
-            if(gp) {
-                keys.w = gp.axes[1] < -0.2; keys.s = gp.axes[1] > 0.2;
-                keys.a = gp.axes[0] < -0.2; keys.d = gp.axes[0] > 0.2;
-                if(gp.buttons[0].pressed && Math.random() > 0.9) triggerFire();
+        // 鍵盤事件監聽
+        let keys = { up: false, down: false, left: false, right: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState.over) {
+                if (e.key === 'r' || e.key === 'R' || e.key === 'Enter') {
+                    initGame();
+                    player = cats[0];
+                }
+                return;
+            }
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+            if (e.key === 'e' || e.key === 'E') triggerAction();
+            if (e.key === 'x' || e.key === 'X') triggerKill();
+            if (e.key === 'y' || e.key === 'Y') triggerMeeting();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+        });
+
+        // 虛擬按鍵綁定
+        function bindTouchButton(id, keyName) {
+            const btn = document.getElementById(id);
+            if(!btn) return;
+            ['mousedown', 'touchstart'].forEach(evt => {
+                btn.addEventListener(evt, (e) => { 
+                    e.preventDefault(); 
+                    if (gameState.over) return;
+                    keys[keyName] = true; 
+                    btn.classList.add('active'); 
+                });
+            });
+            ['mouseup', 'touchend', 'mouseleave'].forEach(evt => {
+                btn.addEventListener(evt, (e) => { e.preventDefault(); keys[keyName] = false; btn.classList.remove('active'); });
+            });
+        }
+
+        bindTouchButton('btn-up', 'up');
+        bindTouchButton('btn-down', 'down');
+        bindTouchButton('btn-left', 'left');
+        bindTouchButton('btn-right', 'right');
+
+        document.getElementById('btn-action').addEventListener('click', () => { if(!gameState.over) triggerAction(); });
+        document.getElementById('btn-kill').addEventListener('click', () => { if(!gameState.over) triggerKill(); });
+        document.getElementById('btn-meeting').addEventListener('click', () => { if(!gameState.over) triggerMeeting(); });
+        document.getElementById('btn-x').addEventListener('click', () => { if(!gameState.over) triggerKill(); });
+        document.getElementById('btn-y').addEventListener('click', () => { if(!gameState.over) triggerMeeting(); });
+        document.getElementById('btn-a').addEventListener('click', () => { if(!gameState.over) triggerAction(); });
+        document.getElementById('btn-b').addEventListener('click', () => { if(!gameState.over) showMessage("【取消】關閉選單"); });
+
+        function showMessage(text) {
+            if(gameState.over || gameState.inMeeting) return;
+            gameState.message = text;
+            gameState.messageTimer = 120;
+        }
+
+        function checkCollision(nx, ny, radius) {
+            for (let wall of walls) {
+                if (nx + radius > wall.x &&
+                    nx - radius < wall.x + wall.w &&
+                    ny + radius > wall.y &&
+                    ny - radius < wall.y + wall.h) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function triggerAction() {
+            player = cats[0];
+            if(!player.isAlive || gameState.over || gameState.inMeeting) return;
+            let interacted = false;
+            for (let task of tasks) {
+                let dist = Math.hypot(player.x - task.x, player.y - task.y);
+                if (dist < 45 && !task.completed) {
+                    task.completed = true;
+                    gameState.tasksCompleted++;
+                    showMessage(`完成任務：${task.name} (${gameState.tasksCompleted}/${gameState.totalTasks})`);
+                    interacted = true;
+                    if (gameState.tasksCompleted >= gameState.totalTasks) {
+                        endGame("船員陣營 (CREW-MATES)", "所有任務已成功修復完畢！");
+                    }
+                    break;
+                }
+            }
+            if (!interacted) {
+                showMessage("附近沒有未完成的任務設施！");
+            }
+        }
+
+        function triggerKill() {
+            player = cats[0];
+            if(!player.isAlive || !player.isKiller || gameState.over || gameState.inMeeting) return;
+            let killedAny = false;
+            for (let cat of cats) {
+                if (cat.id !== player.id && cat.isAlive) {
+                    let dist = Math.hypot(player.x - cat.x, player.y - cat.y);
+                    if (dist < 45) {
+                        cat.isAlive = false;
+                        showMessage(`你擊殺了 ${cat.name}！`);
+                        killedAny = true;
+                        checkWinConditions();
+                        break;
+                    }
+                }
+            }
+            if(!killedAny) {
+                showMessage("攻擊範圍內沒有目標！");
+            }
+        }
+
+        function triggerMeeting() {
+            player = cats[0];
+            if(!player.isAlive || gameState.over || gameState.inMeeting) return;
+            gameState.inMeeting = true;
+            gameState.meetingText = "召集緊急會議中... 貓咪們正在熱烈討論誰是殺手！";
+
+            setTimeout(() => {
+                let aliveCats = cats.filter(c => c.isAlive);
+                let votes = {};
+                aliveCats.forEach(c => { votes[c.name] = 0; });
+
+                aliveCats.forEach(cat => {
+                    let candidates = aliveCats.filter(c => c.id !== cat.id);
+                    if(candidates.length > 0) {
+                        let votedTarget = candidates[Math.floor(Math.random() * candidates.length)];
+                        votes[votedTarget.name]++;
+                    }
+                });
+
+                let maxVotes = -1;
+                let suspectName = "";
+                for (let name in votes) {
+                    if (votes[name] > maxVotes) {
+                        maxVotes = votes[name];
+                        suspectName = name;
+                    }
+                }
+
+                let targetedCat = cats.find(c => c.name === suspectName);
+                if (targetedCat) {
+                    targetedCat.isAlive = false;
+                    if (targetedCat.isKiller) {
+                        gameState.meetingText = `投票結果：${suspectName} 獲得最高票被放逐！\n【太棒了！他確實是殺手！】`;
+                    } else {
+                        gameState.meetingText = `投票結果：${suspectName} 獲得最高票被放逐！\n【搞錯了...他其實是無辜船員！】`;
+                    }
+                }
+
+                setTimeout(() => {
+                    gameState.inMeeting = false;
+                    checkWinConditions();
+                }, 3500);
+
+            }, 2000);
+        }
+
+        function checkWinConditions() {
+            let aliveCrew = cats.filter(c => !c.isKiller && c.isAlive).length;
+            let aliveKillers = cats.filter(c => c.isKiller && c.isAlive).length;
+
+            if (aliveKillers === 0) {
+                endGame("船員陣營 (CREW-MATES)", "所有殺手已被全數淘汰！");
+            } else if (aliveCrew <= aliveKillers) {
+                endGame("殺手陣營 (IMPOSTOR)", "殺手人數已達優勢，成功掌控太空艙！");
+            }
+        }
+
+        function endGame(title, sub) {
+            gameState.over = true;
+            gameState.winnerTitle = title;
+            gameState.winnerSub = sub;
+        }
+
+        function updateCats() {
+            if(gameState.over || gameState.inMeeting) return;
+            player = cats[0];
+
+            // 1. 玩家移動
+            if(player.isAlive) {
+                let pdx = 0;
+                let pdy = 0;
+                if (keys.up) pdy -= player.speed;
+                if (keys.down) pdy += player.speed;
+                if (keys.left) { pdx -= player.speed; player.direction = -1; }
+                if (keys.right) { pdx += player.speed; player.direction = 1; }
+
+                if (pdx !== 0 || pdy !== 0) {
+                    player.isMoving = true;
+                    player.animTimer += 0.2;
+                    if (!checkCollision(player.x + pdx, player.y, player.radius)) player.x += pdx;
+                    if (!checkCollision(player.x, player.y + pdy, player.radius)) player.y += pdy;
+                } else {
+                    player.isMoving = false;
+                }
             }
 
-            // 物理移動
-            if(keys.w) tankSpeed = Math.min(tankSpeed + 0.02, 0.3);
-            else if(keys.s) tankSpeed = Math.max(tankSpeed - 0.02, -0.15);
-            else tankSpeed *= 0.92;
-            
-            tank.translateZ(tankSpeed);
-            if(Math.abs(tankSpeed) > 0.01) {
-                if(keys.a) tank.rotation.y += 0.03 * (tankSpeed > 0 ? 1 : -1);
-                if(keys.d) tank.rotation.y -= 0.03 * (tankSpeed > 0 ? 1 : -1);
+            // 2. NPC AI
+            for (let i = 1; i < cats.length; i++) {
+                let cat = cats[i];
+                if (!cat.isAlive) continue;
+
+                cat.animTimer += 0.15;
+                cat.wanderTimer--;
+
+                if (cat.wanderTimer <= 0) {
+                    cat.wanderTimer = 80 + Math.random() * 100;
+                    cat.targetX = 80 + Math.random() * 640;
+                    cat.targetY = 80 + Math.random() * 290;
+
+                    if (cat.isKiller) {
+                        let victims = cats.filter(c => !c.isKiller && c.isAlive);
+                        if (victims.length > 0) {
+                            let target = victims[Math.floor(Math.random() * victims.length)];
+                            cat.targetX = target.x;
+                            cat.targetY = target.y;
+                        }
+                    }
+                }
+
+                let angle = Math.atan2(cat.targetY - cat.y, cat.targetX - cat.x);
+                let ndx = Math.cos(angle) * cat.speed;
+                let ndy = Math.sin(angle) * cat.speed;
+
+                if (ndx > 0) cat.direction = 1;
+                else if (ndx < 0) cat.direction = -1;
+
+                if (!checkCollision(cat.x + ndx, cat.y, cat.radius)) cat.x += ndx;
+                else cat.wanderTimer = 0;
+
+                if (!checkCollision(cat.x, cat.y + ndy, cat.radius)) cat.y += ndy;
+                else cat.wanderTimer = 0;
+
+                cat.isMoving = true;
+
+                if (cat.isKiller) {
+                    cat.actionCooldown--;
+                    if (cat.actionCooldown <= 0) {
+                        for (let other of cats) {
+                            if (other.id !== cat.id && !other.isKiller && other.isAlive) {
+                                let dist = Math.hypot(cat.x - other.x, cat.y - other.y);
+                                if (dist < 35) {
+                                    other.isAlive = false;
+                                    cat.actionCooldown = 180;
+                                    checkWinConditions();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            // 子彈
-            bullets.forEach((b, i) => {
-                b.position.addScaledVector(b.userData.dir, 2);
-                if(--b.userData.life < 0) { scene.remove(b); bullets.splice(i, 1); }
+            if (gameState.messageTimer > 0) {
+                gameState.messageTimer--;
+            }
+        }
+
+        // 繪製一般貓造型
+        function drawCat(cat) {
+            ctx.save();
+            ctx.translate(cat.x, cat.y);
+            ctx.scale(cat.direction, 1);
+
+            let bounce = cat.isMoving ? Math.sin(cat.animTimer * 5) * 2 : 0;
+            let legSwing = cat.isMoving ? Math.sin(cat.animTimer * 5) * 3 : 0;
+
+            ctx.translate(0, bounce);
+
+            if (!cat.isAlive) {
+                ctx.rotate(Math.PI / 2);
+                ctx.globalAlpha = 0.5;
+            }
+
+            ctx.fillStyle = cat.isPlayer ? '#ffffff' : '#f0f0f0';
+            ctx.strokeStyle = '#222222';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(-10, 14);
+            ctx.lineTo(-14 + legSwing, 22);
+            ctx.lineTo(-4, 16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(10, 14);
+            ctx.lineTo(14 - legSwing, 22);
+            ctx.lineTo(4, 16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
+            ctx.fillStyle = cat.isPlayer ? '#ffffff' : '#e0e0e0';
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#111111';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(-13, -10);
+            ctx.lineTo(-18, -20);
+            ctx.lineTo(-5, -14);
+            ctx.closePath();
+            ctx.fillStyle = ctx.fillStyle;
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(13, -10);
+            ctx.lineTo(18, -20);
+            ctx.lineTo(5, -14);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#111111';
+            ctx.beginPath(); ctx.arc(-5, -2, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(5, -2, 2, 0, Math.PI * 2); ctx.fill();
+
+            ctx.strokeStyle = '#111111';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, 1); ctx.lineTo(-2, 3.5);
+            ctx.moveTo(0, 1); ctx.lineTo(2, 3.5);
+            ctx.moveTo(-3, 3.5);
+            ctx.quadraticCurveTo(0, 7, 3, 3.5);
+            ctx.stroke();
+
+            if (cat.isPlayer) {
+                ctx.restore();
+                ctx.save();
+                ctx.translate(cat.x, cat.y - 32);
+                ctx.fillStyle = '#ffcc00';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("▼ YOU", 0, 0);
+            }
+
+            ctx.restore();
+        }
+
+        // 畫面渲染
+        function draw() {
+            ctx.fillStyle = '#0b132b';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 地板格線
+            ctx.strokeStyle = '#1c2541';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let j = 0; j < canvas.height; j += 40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            }
+
+            // 任務點
+            tasks.forEach(task => {
+                ctx.beginPath();
+                ctx.arc(task.x, task.y, task.radius, 0, Math.PI * 2);
+                ctx.fillStyle = task.completed ? 'rgba(46, 204, 113, 0.3)' : 'rgba(241, 196, 15, 0.3)';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = task.completed ? '#2ecc71' : '#f1c40f';
+                ctx.stroke();
+
+                ctx.fillStyle = task.completed ? '#2ecc71' : '#f1c40f';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(task.completed ? '✓' : '!', task.x, task.y - 4);
+                ctx.font = '9px sans-serif';
+                ctx.fillText(task.name, task.x, task.y + 18);
             });
 
-            // 鏡頭
-            camera.position.set(tank.position.x - Math.sin(tank.rotation.y)*15, tank.position.y+7, tank.position.z - Math.cos(tank.rotation.y)*15);
-            camera.lookAt(tank.position);
-            renderer.render(scene, camera);
+            // 牆壁
+            ctx.fillStyle = '#3a506b';
+            ctx.strokeStyle = '#5bc0be';
+            ctx.lineWidth = 3;
+            walls.forEach(wall => {
+                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+            });
+
+            // 繪製所有貓咪
+            cats.forEach(cat => drawCat(cat));
+
+            // 一般訊息框
+            if (gameState.messageTimer > 0 && !gameState.inMeeting && !gameState.over) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(120, 15, 560, 35);
+                ctx.strokeStyle = '#ffcc00';
+                ctx.strokeRect(120, 15, 560, 35);
+                ctx.fillStyle = '#ffcc00';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(gameState.message, 400, 37);
+            }
+
+            // 開會畫面
+            if (gameState.inMeeting) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 4;
+                ctx.fillRect(150, 80, 500, 290);
+                ctx.strokeRect(150, 80, 500, 290);
+
+                ctx.fillStyle = '#60a5fa';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("🚨 緊急會議：投票討論中 🚨", 400, 125);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px sans-serif';
+                let lines = gameState.meetingText.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    ctx.fillText(lines[i], 400, 175 + (i * 25));
+                }
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '12px sans-serif';
+                let aliveNames = cats.filter(c => c.isAlive).map(c => c.name).join("、");
+                ctx.fillText("參與投票者：" + aliveNames, 400, 310);
+                ctx.fillText("請稍候，正由全體貓咪表決中...", 400, 340);
+            }
+
+            // 🏆 最終勝負結算畫面覆蓋層
+            if (gameState.over) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#111827';
+                ctx.strokeStyle = gameState.winnerTitle.includes("船員") ? '#22c55e' : '#ef4444';
+                ctx.lineWidth = 4;
+                ctx.fillRect(130, 70, 540, 310);
+                ctx.strokeRect(130, 70, 540, 310);
+
+                ctx.fillStyle = gameState.winnerTitle.includes("船員") ? '#4ade80' : '#f87171';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("🏆 遊戲結束：勝者揭曉 🏆", 400, 120);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.fillText("【 獲勝方：" + gameState.winnerTitle + " 】", 400, 180);
+
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '15px sans-serif';
+                ctx.fillText(gameState.winnerSub, 400, 230);
+
+                // 顯示身分揭曉
+                let killerCat = cats.find(c => c.isKiller);
+                ctx.fillStyle = '#fca5a5';
+                ctx.font = '13px sans-serif';
+                ctx.fillText("本局潛伏的殺手是：【 " + killerCat.name + " 】", 400, 280);
+
+                // 重新開始提示按鈕
+                ctx.fillStyle = '#3b82f6';
+                ctx.fillRect(270, 310, 260, 45);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 15px sans-serif';
+                ctx.fillText("點擊此處或按 R 鍵重新開始", 400, 338);
+            }
         }
-        animate();
+
+        // 點擊結算畫面即可重新開始遊戲
+        canvas.addEventListener('click', () => {
+            if (gameState.over) {
+                initGame();
+                player = cats[0];
+            }
+        });
+
+        // 遊戲主迴圈
+        function gameLoop() {
+            updateCats();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
