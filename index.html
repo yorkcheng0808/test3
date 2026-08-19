@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>貓咪太空狼人殺 - 完整勝負結算特仕版</title>
+    <title>貓咪太空狼人殺 - 擴展地圖與相機跟隨版</title>
     <style>
         body {
             margin: 0;
@@ -114,7 +114,7 @@
 </head>
 <body>
 
-    <h1>🐱 貓咪太空狼人殺 (完整勝負結算版)</h1>
+    <h1>🐱 貓咪太空狼人殺 (探索地圖特仕版)</h1>
     
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="450"></canvas>
@@ -164,11 +164,17 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // 世界地圖尺寸（大於顯示畫面，用來做相機跟隨）
+        const worldWidth = 1600;
+        const worldHeight = 1200;
+
+        let camera = { x: 0, y: 0 };
+
         // 遊戲全域狀態
         let gameState = {
             tasksCompleted: 0,
-            totalTasks: 4,
-            message: "遊戲開始！請確認你的身分與任務。",
+            totalTasks: 6,
+            message: "遊戲開始！請探索太空艙並完成任務。",
             messageTimer: 180,
             over: false,
             winnerTitle: "",
@@ -177,30 +183,66 @@
             meetingText: ""
         };
 
-        // 地圖牆壁障礙物
+        // 精緻複雜的地圖牆壁（包含多個房間、走廊與轉角）
         const walls = [
-            { x: 40, y: 40, w: 720, h: 20 },
-            { x: 40, y: 390, w: 720, h: 20 },
-            { x: 40, y: 40, w: 20, h: 140 },
-            { x: 40, y: 250, w: 20, h: 160 },
-            { x: 740, y: 40, w: 20, h: 370 },
-            { x: 240, y: 40, w: 20, h: 140 },
-            { x: 560, y: 40, w: 20, h: 140 },
-            { x: 320, y: 250, w: 160, h: 20 },
-            { x: 240, y: 300, w: 20, h: 90 },
-            { x: 560, y: 300, w: 20, h: 90 }
+            // 外圍邊界
+            { x: 50, y: 50, w: 1500, h: 20 },
+            { x: 50, y: 1130, w: 1500, h: 20 },
+            { x: 50, y: 50, w: 20, h: 1100 },
+            { x: 1530, y: 50, w: 20, h: 1100 },
+
+            // 內部隔間與房間結構 (製造大量轉角與通道)
+            // 房間 A (左上：導航與駕駛室)
+            { x: 50, y: 350, w: 350, h: 20 },
+            { x: 380, y: 50, w: 20, h: 320 },
+
+            // 房間 B (右上：防護罩與武器庫)
+            { x: 1170, y: 50, w: 20, h: 320 },
+            { x: 1200, y: 350, w: 350, h: 20 },
+
+            // 中央大廳區隔牆
+            { x: 450, y: 350, w: 20, h: 250 },
+            { x: 1130, y: 350, w: 20, h: 250 },
+            { x: 450, y: 580, w: 250, h: 20 },
+            { x: 900, y: 580, w: 250, h: 20 },
+
+            // 下方房間 C (左下：通訊與醫療室)
+            { x: 50, y: 800, w: 380, h: 20 },
+            { x: 400, y: 820, w: 20, h: 310 },
+
+            // 下方房間 D (右下：引擎與核心爐)
+            { x: 1170, y: 800, w: 380, h: 20 },
+            { x: 1170, y: 820, w: 20, h: 310 },
+
+            // 中間障礙物與柱子（增加轉角戰術點）
+            { x: 700, y: 200, w: 200, h: 100 },
+            { x: 650, y: 850, w: 300, h: 80 },
+            { x: 200, y: 550, w: 100, h: 120 },
+            { x: 1300, y: 550, w: 100, h: 120 }
         ];
 
-        // 任務點
+        // 任務點分佈在地圖各處
         const tasks = [
-            { x: 100, y: 100, name: "導航面板", completed: false, radius: 25 },
-            { x: 700, y: 100, name: "防護罩", completed: false, radius: 25 },
-            { x: 100, y: 340, name: "通訊裝置", completed: false, radius: 25 },
-            { x: 700, y: 340, name: "引擎爐", completed: false, radius: 25 }
+            { x: 150, y: 150, name: "導航控制板", completed: false, radius: 25 },
+            { x: 1450, y: 150, name: "防護罩充能", completed: false, radius: 25 },
+            { x: 150, y: 980, name: "通訊頻率調整", completed: false, radius: 25 },
+            { x: 1450, y: 980, name: "引擎爐冷卻", completed: false, radius: 25 },
+            { x: 800, y: 120, name: "中央控制台", completed: false, radius: 25 },
+            { x: 800, y: 1050, name: "核芯維護", completed: false, radius: 25 }
         ];
 
-        // 貓咪名稱清單
-        const catNames = ["玩家貓", "小橘貓", "阿花", "黑鼻", "小白", "三花", "斑斑", "乳牛貓"];
+        // 貓咪名稱與獨特顏色設定
+        const catData = [
+            { name: "玩家貓", color: "#ffffff" }, // 白貓
+            { name: "小橘貓", color: "#ff9f43" }, // 橘貓
+            { name: "阿花", color: "#ff9ff3" },     // 粉白花貓
+            { name: "黑鼻", color: "#576574" },     // 灰黑貓
+            { name: "小白", color: "#c8d6e5" },     // 銀白貓
+            { name: "三花", color: "#feca57" },     // 黃斑貓
+            { name: "斑斑", color: "#ff6b6b" },     // 紅棕貓
+            { name: "乳牛貓", color: "#222222" }    // 黑白乳牛貓
+        ];
+
         let cats = [];
 
         function initGame() {
@@ -208,7 +250,7 @@
             gameState.tasksCompleted = 0;
             gameState.over = false;
             gameState.inMeeting = false;
-            gameState.message = "遊戲開始！請確認你的身分與任務。";
+            gameState.message = "遊戲開始！請探索太空艙並完成任務。";
             gameState.messageTimer = 180;
 
             tasks.forEach(t => t.completed = false);
@@ -216,11 +258,16 @@
             const killerIndex = Math.floor(Math.random() * 8);
 
             for (let i = 0; i < 8; i++) {
+                // 將 8 隻貓分散在地圖不同房間
+                let spawnX = 200 + (i % 4) * 350;
+                let spawnY = 200 + Math.floor(i / 4) * 600;
+
                 cats.push({
                     id: i,
-                    name: catNames[i],
-                    x: 150 + (i % 4) * 140,
-                    y: 120 + Math.floor(i / 4) * 150,
+                    name: catData[i].name,
+                    color: catData[i].color,
+                    x: spawnX,
+                    y: spawnY,
                     radius: 18,
                     speed: 2.2,
                     isPlayer: (i === 0),
@@ -230,8 +277,8 @@
                     animTimer: Math.random() * 10,
                     direction: 1,
                     wanderTimer: 0,
-                    targetX: 400,
-                    targetY: 225,
+                    targetX: spawnX,
+                    targetY: spawnY,
                     actionCooldown: 0
                 });
             }
@@ -337,7 +384,7 @@
                     showMessage(`完成任務：${task.name} (${gameState.tasksCompleted}/${gameState.totalTasks})`);
                     interacted = true;
                     if (gameState.tasksCompleted >= gameState.totalTasks) {
-                        endGame("船員陣營 (CREW-MATES)", "所有任務已成功修復完畢！");
+                        endGame("船員陣營 (CREW-MATES)", "所有太空任務已成功修復完畢！");
                     }
                     break;
                 }
@@ -356,7 +403,7 @@
                     let dist = Math.hypot(player.x - cat.x, player.y - cat.y);
                     if (dist < 45) {
                         cat.isAlive = false;
-                        showMessage(`你擊殺了 ${cat.name}！`);
+                        showMessage(`你暗中擊殺了 ${cat.name}！`);
                         killedAny = true;
                         checkWinConditions();
                         break;
@@ -364,7 +411,7 @@
                 }
             }
             if(!killedAny) {
-                showMessage("攻擊範圍內沒有目標！");
+                showMessage("攻擊範圍內沒有可擊殺的目標！");
             }
         }
 
@@ -454,7 +501,13 @@
                 }
             }
 
-            // 2. NPC AI
+            // 更新相機位置以追蹤玩家（實現第三人稱局部視野）
+            camera.x = player.x - canvas.width / 2;
+            camera.y = player.y - canvas.height / 2;
+            camera.x = Math.max(0, Math.min(worldWidth - canvas.width, camera.x));
+            camera.y = Math.max(0, Math.min(worldHeight - canvas.height, camera.y));
+
+            // 2. NPC AI 移動與隨機巡邏
             for (let i = 1; i < cats.length; i++) {
                 let cat = cats[i];
                 if (!cat.isAlive) continue;
@@ -463,9 +516,9 @@
                 cat.wanderTimer--;
 
                 if (cat.wanderTimer <= 0) {
-                    cat.wanderTimer = 80 + Math.random() * 100;
-                    cat.targetX = 80 + Math.random() * 640;
-                    cat.targetY = 80 + Math.random() * 290;
+                    cat.wanderTimer = 100 + Math.random() * 150;
+                    cat.targetX = 100 + Math.random() * (worldWidth - 200);
+                    cat.targetY = 100 + Math.random() * (worldHeight - 200);
 
                     if (cat.isKiller) {
                         let victims = cats.filter(c => !c.isKiller && c.isAlive);
@@ -500,7 +553,7 @@
                                 let dist = Math.hypot(cat.x - other.x, cat.y - other.y);
                                 if (dist < 35) {
                                     other.isAlive = false;
-                                    cat.actionCooldown = 180;
+                                    cat.actionCooldown = 200;
                                     checkWinConditions();
                                     break;
                                 }
@@ -515,7 +568,7 @@
             }
         }
 
-        // 繪製一般貓造型
+        // 繪製不同毛色的貓咪
         function drawCat(cat) {
             ctx.save();
             ctx.translate(cat.x, cat.y);
@@ -531,7 +584,8 @@
                 ctx.globalAlpha = 0.5;
             }
 
-            ctx.fillStyle = cat.isPlayer ? '#ffffff' : '#f0f0f0';
+            // 短腳
+            ctx.fillStyle = cat.color;
             ctx.strokeStyle = '#222222';
             ctx.lineWidth = 2;
 
@@ -551,20 +605,22 @@
             ctx.fill();
             ctx.stroke();
 
+            // 身體
             ctx.beginPath();
             ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
-            ctx.fillStyle = cat.isPlayer ? '#ffffff' : '#e0e0e0';
+            ctx.fillStyle = cat.color;
             ctx.fill();
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = '#111111';
             ctx.stroke();
 
+            // 耳朵
             ctx.beginPath();
             ctx.moveTo(-13, -10);
             ctx.lineTo(-18, -20);
             ctx.lineTo(-5, -14);
             ctx.closePath();
-            ctx.fillStyle = ctx.fillStyle;
+            ctx.fillStyle = cat.color;
             ctx.fill();
             ctx.stroke();
 
@@ -576,6 +632,7 @@
             ctx.fill();
             ctx.stroke();
 
+            // 表情
             ctx.fillStyle = '#111111';
             ctx.beginPath(); ctx.arc(-5, -2, 2, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.arc(5, -2, 2, 0, Math.PI * 2); ctx.fill();
@@ -589,15 +646,14 @@
             ctx.quadraticCurveTo(0, 7, 3, 3.5);
             ctx.stroke();
 
-            if (cat.isPlayer) {
-                ctx.restore();
-                ctx.save();
-                ctx.translate(cat.x, cat.y - 32);
-                ctx.fillStyle = '#ffcc00';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("▼ YOU", 0, 0);
-            }
+            // 顯示名字與玩家標記
+            ctx.restore();
+            ctx.save();
+            ctx.translate(cat.x, cat.y - 28);
+            ctx.fillStyle = cat.isPlayer ? '#ffcc00' : '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(cat.isPlayer ? "▼ YOU (" + cat.name + ")" : cat.name, 0, 0);
 
             ctx.restore();
         }
@@ -607,14 +663,18 @@
             ctx.fillStyle = '#0b132b';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 地板格線
+            ctx.save();
+            // 套用相機位移（實現第三人稱鏡頭捲動）
+            ctx.translate(-camera.x, -camera.y);
+
+            // 地板格線 (依據世界大小延伸)
             ctx.strokeStyle = '#1c2541';
             ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 40) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            for (let i = 0; i < worldWidth; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, worldHeight); ctx.stroke();
             }
-            for (let j = 0; j < canvas.height; j += 40) {
-                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            for (let j = 0; j < worldHeight; j += 40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(worldWidth, j); ctx.stroke();
             }
 
             // 任務點
@@ -647,7 +707,9 @@
             // 繪製所有貓咪
             cats.forEach(cat => drawCat(cat));
 
-            // 一般訊息框
+            ctx.restore(); // 恢復相機矩陣以繪製固定 UI
+
+            // 一般訊息框 (固定在畫面上方)
             if (gameState.messageTimer > 0 && !gameState.inMeeting && !gameState.over) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(120, 15, 560, 35);
@@ -713,13 +775,11 @@
                 ctx.font = '15px sans-serif';
                 ctx.fillText(gameState.winnerSub, 400, 230);
 
-                // 顯示身分揭曉
                 let killerCat = cats.find(c => c.isKiller);
                 ctx.fillStyle = '#fca5a5';
                 ctx.font = '13px sans-serif';
                 ctx.fillText("本局潛伏的殺手是：【 " + killerCat.name + " 】", 400, 280);
 
-                // 重新開始提示按鈕
                 ctx.fillStyle = '#3b82f6';
                 ctx.fillRect(270, 310, 260, 45);
                 ctx.fillStyle = '#ffffff';
