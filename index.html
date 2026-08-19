@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>貓咪太空狼人殺 - 順暢通道與近距離特仕版</title>
+    <title>貓咪太空狼人殺 - 玩家自主投票版</title>
     <style>
         body {
             margin: 0;
@@ -38,6 +38,7 @@
         canvas {
             display: block;
             background: #1b263b;
+            cursor: pointer;
         }
 
         .controller-ui {
@@ -113,7 +114,7 @@
 </head>
 <body>
 
-    <h1>🐱 貓咪太空狼人殺 (無死路與近距離視角)</h1>
+    <h1>🐱 貓咪太空狼人殺 (自主投票特仕版)</h1>
     
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="450"></canvas>
@@ -162,7 +163,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 世界地圖尺寸
         const worldWidth = 1600;
         const worldHeight = 1200;
 
@@ -177,31 +177,26 @@
             winnerTitle: "",
             winnerSub: "",
             inMeeting: false,
-            meetingText: ""
+            meetingStep: 'voting', // 'voting' 或 'result'
+            meetingText: "",
+            voteButtons: [] // 儲存會議中點擊按鈕的碰撞區域
         };
 
-        // 改良版「完全無死路」地圖結構：所有障礙物與隔間皆保持環狀雙向通道、寬敞轉角
+        // 寬敞、全通透、無死路的地圖
         const walls = [
-            // 外圍邊界
             { x: 40, y: 40, w: 1520, h: 20 },
             { x: 40, y: 1140, w: 1520, h: 20 },
             { x: 40, y: 40, w: 20, h: 1120 },
             { x: 1540, y: 40, w: 20, h: 1120 },
 
-            // 內部核心十字柱與環形通道隔板（四周皆留有寬闊大走廊，絕無死路）
             { x: 350, y: 300, w: 250, h: 30 },
             { x: 350, y: 300, w: 30, h: 220 },
-
             { x: 1000, y: 300, w: 250, h: 30 },
             { x: 1220, y: 300, w: 30, h: 220 },
-
             { x: 350, y: 880, w: 250, h: 30 },
             { x: 350, y: 680, w: 30, h: 220 },
-
             { x: 1000, y: 880, w: 250, h: 30 },
             { x: 1220, y: 680, w: 30, h: 220 },
-
-            // 中央圓環大柱體（四周都有寬敞通道可繞行）
             { x: 700, y: 500, w: 200, h: 200 }
         ];
 
@@ -214,16 +209,15 @@
             { x: 800, y: 1050, name: "核芯維護", completed: false, radius: 25 }
         ];
 
-        // 8隻貓咪各自擁有獨特且鮮豔的顏色
         const catData = [
-            { name: "玩家貓", color: "#ffffff" }, // 白貓
-            { name: "小橘貓", color: "#ff9f43" }, // 橘貓
-            { name: "阿花", color: "#ff9ff3" },     // 粉白花貓
-            { name: "黑鼻", color: "#576574" },     // 灰黑貓
-            { name: "小白", color: "#c8d6e5" },     // 銀白貓
-            { name: "三花", color: "#feca57" },     // 黃斑貓
-            { name: "斑斑", color: "#ff6b6b" },     // 紅棕貓
-            { name: "乳牛貓", color: "#222222" }    // 黑白乳牛貓
+            { name: "玩家貓", color: "#ffffff" },
+            { name: "小橘貓", color: "#ff9f43" },
+            { name: "阿花", color: "#ff9ff3" },
+            { name: "黑鼻", color: "#576574" },
+            { name: "小白", color: "#c8d6e5" },
+            { name: "三花", color: "#feca57" },
+            { name: "斑斑", color: "#ff6b6b" },
+            { name: "乳牛貓", color: "#222222" }
         ];
 
         let cats = [];
@@ -399,31 +393,49 @@
             player = cats[0];
             if(!player.isAlive || gameState.over || gameState.inMeeting) return;
             gameState.inMeeting = true;
-            gameState.meetingText = "🚨 緊急會議召開：全體貓咪正在進行辯論與投票...";
+            gameState.meetingStep = 'voting';
+            gameState.meetingText = "請點擊你想投票懷疑的貓咪（或選擇略過投票）：";
+        }
 
-            setTimeout(() => {
-                let aliveCats = cats.filter(c => c.isAlive);
-                let votes = {};
-                aliveCats.forEach(c => { votes[c.name] = 0; });
+        // 玩家進行投票的結算處理
+        function processPlayerVote(votedTargetName) {
+            gameState.meetingStep = 'result';
+            
+            let aliveCats = cats.filter(c => c.isAlive);
+            let votes = {};
+            aliveCats.forEach(c => { votes[c.name] = 0; });
 
-                // 模擬太空狼人殺投票：每隻存活貓咪隨機投票給其他人（或有時選擇略過）
-                aliveCats.forEach(cat => {
-                    let candidates = aliveCats.filter(c => c.id !== cat.id);
-                    if(candidates.length > 0) {
-                        let votedTarget = candidates[Math.floor(Math.random() * candidates.length)];
-                        votes[votedTarget.name]++;
-                    }
-                });
+            // 記錄玩家的投票
+            if (votedTargetName !== 'SKIP') {
+                votes[votedTargetName]++;
+            }
 
-                let maxVotes = -1;
-                let suspectName = "";
-                for (let name in votes) {
-                    if (votes[name] > maxVotes) {
-                        maxVotes = votes[name];
-                        suspectName = name;
-                    }
+            // 剩餘 NPC 貓咪隨機投票
+            aliveCats.forEach(cat => {
+                if (cat.isPlayer) return; // 玩家已經投過
+                let candidates = aliveCats.filter(c => c.id !== cat.id);
+                if (candidates.length > 0) {
+                    let votedTarget = candidates[Math.floor(Math.random() * candidates.length)];
+                    votes[votedTarget.name]++;
                 }
+            });
 
+            let maxVotes = -1;
+            let suspectName = "";
+            let tie = false;
+            for (let name in votes) {
+                if (votes[name] > maxVotes) {
+                    maxVotes = votes[name];
+                    suspectName = name;
+                    tie = false;
+                } else if (votes[name] === maxVotes && maxVotes > 0) {
+                    tie = true;
+                }
+            }
+
+            if (tie || suspectName === '' || maxVotes === 0) {
+                gameState.meetingText = "投票結果：票數分散或無人最高票，本輪無人被放逐。";
+            } else {
                 let targetedCat = cats.find(c => c.name === suspectName);
                 if (targetedCat) {
                     targetedCat.isAlive = false;
@@ -433,13 +445,13 @@
                         gameState.meetingText = `投票結果：${suspectName} 獲得最高票被放逐！\n【搞錯了...他其實是無辜的船員貓！】`;
                     }
                 }
+            }
 
-                setTimeout(() => {
-                    gameState.inMeeting = false;
-                    checkWinConditions();
-                }, 3500);
-
-            }, 2000);
+            // 顯示結果 3.5 秒後自動結束會議並檢查勝負
+            setTimeout(() => {
+                gameState.inMeeting = false;
+                checkWinConditions();
+            }, 3500);
         }
 
         function checkWinConditions() {
@@ -481,13 +493,11 @@
                 }
             }
 
-            // 【相機跟隨與更近的第三人稱視角】
             camera.x = player.x - canvas.width / 2;
             camera.y = player.y - canvas.height / 2;
             camera.x = Math.max(0, Math.min(worldWidth - canvas.width, camera.x));
             camera.y = Math.max(0, Math.min(worldHeight - canvas.height, camera.y));
 
-            // NPC 隨機巡邏
             for (let i = 1; i < cats.length; i++) {
                 let cat = cats[i];
                 if (!cat.isAlive) continue;
@@ -688,6 +698,7 @@
                 ctx.fillText(gameState.message, 400, 37);
             }
 
+            // 緊急會議與投票 UI 畫面
             if (gameState.inMeeting) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -695,26 +706,78 @@
                 ctx.fillStyle = '#1e293b';
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 4;
-                ctx.fillRect(150, 80, 500, 290);
-                ctx.strokeRect(150, 80, 500, 290);
+                ctx.fillRect(100, 45, 600, 360);
+                ctx.strokeRect(100, 45, 600, 360);
 
                 ctx.fillStyle = '#60a5fa';
-                ctx.font = 'bold 20px sans-serif';
+                ctx.font = 'bold 18px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText("🚨 貓咪緊急會議與投票表決中 🚨", 400, 125);
+                ctx.fillText("🚨 緊急會議：討論與投票表決 🚨", 400, 80);
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '14px sans-serif';
-                let lines = gameState.meetingText.split('\n');
-                for (let i = 0; i < lines.length; i++) {
-                    ctx.fillText(lines[i], 400, 175 + (i * 25));
-                }
+                ctx.fillText(gameState.meetingText, 400, 110);
 
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = '12px sans-serif';
-                let aliveNames = cats.filter(c => c.isAlive).map(c => c.name).join("、");
-                ctx.fillText("存活貓咪名單：" + aliveNames, 400, 310);
-                ctx.fillText("正在統計全體票數，請稍候...", 400, 340);
+                gameState.voteButtons = [];
+
+                if (gameState.meetingStep === 'voting') {
+                    let aliveCats = cats.filter(c => c.isAlive);
+                    let startX = 130;
+                    let startY = 140;
+                    let btnWidth = 170;
+                    let btnHeight = 45;
+
+                    aliveCats.forEach((cat, index) => {
+                        let col = index % 3;
+                        let row = Math.floor(index / 3);
+                        let bx = startX + col * 185;
+                        let by = startY + row * 55;
+
+                        // 繪製投票按鈕
+                        ctx.fillStyle = cat.isPlayer ? '#334155' : '#27272a';
+                        ctx.strokeStyle = cat.color;
+                        ctx.lineWidth = 2;
+                        ctx.fillRect(bx, by, btnWidth, btnHeight);
+                        ctx.strokeRect(bx, by, btnWidth, btnHeight);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 13px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`投給: ${cat.name}`, bx + 12, by + 27);
+
+                        // 儲存可點擊區域
+                        gameState.voteButtons.push({
+                            x: bx, y: by, w: btnWidth, h: btnHeight, name: cat.name
+                        });
+                    });
+
+                    // 略過投票按鈕 (Skip)
+                    let skipX = 305;
+                    let skipY = 330;
+                    let skipW = 190;
+                    let skipH = 45;
+                    ctx.fillStyle = '#475569';
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.fillRect(skipX, skipY, skipW, skipH);
+                    ctx.strokeRect(skipX, skipY, skipW, skipH);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("略過投票 (Skip)", skipX + skipW / 2, skipY + 27);
+
+                    gameState.voteButtons.push({
+                        x: skipX, y: skipY, w: skipW, h: skipH, name: 'SKIP'
+                    });
+
+                } else if (gameState.meetingStep === 'result') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '15px sans-serif';
+                    let lines = gameState.meetingText.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        ctx.fillText(lines[i], 400, 200 + (i * 30));
+                    }
+                }
             }
 
             if (gameState.over) {
@@ -753,10 +816,26 @@
             }
         }
 
-        canvas.addEventListener('click', () => {
+        // 滑鼠點擊事件：支援結算重啟、以及會議中的自主投票點擊
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
             if (gameState.over) {
                 initGame();
                 player = cats[0];
+                return;
+            }
+
+            if (gameState.inMeeting && gameState.meetingStep === 'voting') {
+                for (let btn of gameState.voteButtons) {
+                    if (clickX >= btn.x && clickX <= btn.x + btn.w &&
+                        clickY >= btn.y && clickY <= btn.y + btn.h) {
+                        processPlayerVote(btn.name);
+                        break;
+                    }
+                }
             }
         });
 
