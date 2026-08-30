@@ -3,1068 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> </title>
+    <title>Roblox 角色與特效展示舞台</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
-            background-color: #121212;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
             overflow: hidden;
+            background-color: #0b0b10;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            pointer-events: none;
+            z-index: 10;
         }
 
         h1 {
-            margin: 5px 0;
-            font-size: 1.3rem;
-            color: #ffcc00;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
         }
 
-        #game-container {
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            border: 4px solid #333;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #0d1b2a;
-        }
-
-        canvas {
-            display: block;
-            background: #0b132b;
-            cursor: pointer;
-        }
-
-        .controller-ui {
-            display: flex;
-            justify-content: space-between;
-            width: 800px;
-            margin-top: 10px;
-            background: #1e1e1e;
-            padding: 10px 20px;
-            border-radius: 10px;
-            box-sizing: border-box;
-            border: 2px solid #444;
-        }
-
-        .stick-area, .button-area {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .control-btn {
-            background: #333;
-            color: white;
-            border: 2px solid #555;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.1s, transform 0.1s;
-            user-select: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        .control-btn:active, .control-btn.active {
-            background: #ffcc00;
-            color: #000;
-            transform: scale(0.95);
-        }
-
-        .d-pad {
-            display: grid;
-            grid-template-columns: repeat(3, 36px);
-            grid-template-rows: repeat(3, 36px);
-            gap: 2px;
-        }
-
-        .d-pad button {
-            background: #2a2a2a;
-            color: #fff;
-            border: 1px solid #555;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .d-pad button:active {
-            background: #ffcc00;
-            color: #000;
-        }
-
-        .info-panel {
-            font-size: 0.85rem;
+        p {
+            margin: 0;
+            font-size: 14px;
             color: #aaa;
-            margin-top: 5px;
-            text-align: center;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        button {
+            background: linear-gradient(135deg, #111, #222);
+            color: #fff;
+            border: 2px solid #00ff88;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+
+        button:hover {
+            background: #00ff88;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
 
-    <h1>🐱 貓咪太空狼人殺 (精密航艦特仕版)</h1>
-    
-    <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="450"></canvas>
+    <div id="info-panel">
+        <h1>Roblox 3D 戰鬥特效舞台</h1>
+        <p>點擊下方按鈕或畫面任意處，觸發全螢幕動態斬擊與爪擊特效！</p>
     </div>
 
-    <div class="info-panel">
-        操作方式：**W,A,S,D** 移動 | **E 鍵**：互動解謎 | **X 鍵**：殺手擊殺 | **Y 鍵**：緊急會議
+    <div id="controls">
+        <button onclick="triggerGreenSlash()">綠光雙刀斬</button>
+        <button onclick="triggerBlueClaw()">藍色能量爪擊</button>
+        <button onclick="triggerDarkMagic()">暗黑惡魔氣場</button>
     </div>
 
-    <div class="controller-ui">
-        <div class="stick-area">
-            <div style="font-size: 0.8rem; color: #888;">方向操控</div>
-            <div class="d-pad">
-                <div></div>
-                <button id="btn-up">▲</button>
-                <div></div>
-                <button id="btn-left">◀</button>
-                <button id="btn-center" style="background: #111; border:none;"></button>
-                <button id="btn-right">▶</button>
-                <div></div>
-                <button id="btn-down">▼</button>
-            </div>
-        </div>
-
-        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;">
-            <span style="font-size: 0.8rem; color: #ffcc00; font-weight: bold;" id="game-status-text">身分載入中...</span>
-            <div style="display: flex; gap: 5px;">
-                <button class="control-btn" id="btn-action" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem;">互動(E)</button>
-                <button class="control-btn" id="btn-kill" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem; background: #500; border-color: #800;">擊殺(X)</button>
-                <button class="control-btn" id="btn-meeting" style="border-radius: 6px; width: 68px; height: 32px; font-size: 0.75rem; background: #005; border-color: #008;">開會(Y)</button>
-            </div>
-        </div>
-
-        <div class="button-area">
-            <div style="font-size: 0.8rem; color: #888;">動作按鍵</div>
-            <div style="display: flex; gap: 8px;">
-                <button class="control-btn" id="btn-x">X</button>
-                <button class="control-btn" id="btn-y">Y</button>
-                <button class="control-btn" id="btn-a">A</button>
-                <button class="control-btn" id="btn-b">B</button>
-            </div>
-        </div>
-    </div>
+    <!-- 引入 Three.js 與特效相關函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // --- 1. 基礎場景與渲染設置 ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0b0b10, 0.03);
 
-        const worldWidth = 2600;
-        const worldHeight = 2000;
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 3, 7);
 
-        let camera = { x: 0, y: 0 };
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-        let gameState = {
-            tasksCompleted: 0,
-            totalTasks: 6,
-            message: "遊戲開始！探索精密航艦，尋找分散各處的艱難任務。",
-            messageTimer: 180,
-            over: false,
-            winnerTitle: "",
-            winnerSub: "",
-            inMeeting: false,
-            meetingStep: 'voting',
-            meetingText: "",
-            voteButtons: [],
-            
-            // 解謎小遊戲狀態
-            inMinigame: false,
-            activeTask: null,
-            minigameType: 'wire', // 'wire' 或 'sequence'
-            
-            // 連線解謎用
-            minigameWires: [],
-            selectedLeftNode: null,
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
 
-            // 數字順序解謎用
-            sequenceNodes: [],
-            nextSequenceNum: 1,
+        // --- 2. 燈光設置 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
 
-            minigameButtons: []
-        };
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
 
-        // 更多複雜障礙物與房間佈局（包含電腦操控室、反應爐室等）
-        const walls = [
-            { x: 40, y: 40, w: 2520, h: 20 },
-            { x: 40, y: 1940, w: 2520, h: 20 },
-            { x: 40, y: 40, w: 20, h: 1900 },
-            { x: 2540, y: 40, w: 20, h: 1900 },
+        const pointLight = new THREE.PointLight(0x00ff88, 2, 10);
+        pointLight.position.set(0, 2, 0);
+        scene.add(pointLight);
 
-            // 電腦操控室 (左上區域)
-            { x: 300, y: 300, w: 500, h: 30 },
-            { x: 300, y: 300, w: 30, h: 400 },
-            { x: 770, y: 300, w: 30, h: 250 },
-            { x: 500, y: 670, w: 300, h: 30 },
+        // --- 3. 建立 Roblox 風格角色 (以綠衣骷髏戰士為藍本) ---
+        const characterGroup = new THREE.Group();
 
-            // 反應爐室 (右下區域)
-            { x: 1700, y: 1300, w: 500, h: 30 },
-            { x: 1700, y: 1300, w: 30, h: 400 },
-            { x: 2170, y: 1450, w: 30, h: 280 },
-            { x: 1700, y: 1700, w: 250, h: 30 },
+        // 頭部 (黑色方塊)
+        const headGeo = new THREE.BoxGeometry(1, 1, 1);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.5;
+        characterGroup.add(head);
 
-            // 中央障礙與走廊隔間
-            { x: 1100, y: 300, w: 400, h: 30 },
-            { x: 1100, y: 500, w: 30, h: 300 },
-            { x: 1470, y: 300, w: 30, h: 500 },
+        // 眼睛 (紅色十字星光芒)
+        const eyeGeo = new THREE.BoxGeometry(0.3, 0.3, 0.1);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+        const eye = new THREE.Mesh(eyeGeo, eyeMat);
+        eye.position.set(0.2, 2.5, 0.51);
+        characterGroup.add(eye);
 
-            { x: 1100, y: 1200, w: 400, h: 30 },
-            { x: 1100, y: 1200, w: 30, h: 400 },
-            { x: 1470, y: 1200, w: 30, h: 400 },
+        // 軀幹 (螢光綠 + 骷髏裝飾感)
+        const torsoGeo = new THREE.BoxGeometry(1.5, 2, 1);
+        const torsoMat = new THREE.MeshStandardMaterial({ color: 0x39ff14, roughness: 0.2 });
+        const torso = new THREE.Mesh(torsoGeo, torsoMat);
+        torso.position.y = 1;
+        characterGroup.add(torso);
 
-            // 其他房間隔牆
-            { x: 300, y: 1200, w: 400, h: 30 },
-            { x: 670, y: 1200, w: 30, h: 400 },
-            { x: 1900, y: 300, w: 400, h: 30 },
-            { x: 1900, y: 300, w: 30, h: 300 }
-        ];
+        // 雙臂
+        const armGeo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        
+        const leftArm = new THREE.Mesh(armGeo, armMat);
+        leftArm.position.set(1.2, 1, 0);
+        characterGroup.add(leftArm);
 
-        // 分散在各個房間的 6 個任務
-        const tasks = [
-            { x: 500, y: 450, name: "電腦操控台解碼", completed: false, radius: 25, type: 'sequence' },
-            { x: 1950, y: 450, name: "武器庫防護校準", completed: false, radius: 25, type: 'wire' },
-            { x: 500, y: 1450, name: "通訊頻率對齊", completed: false, radius: 25, type: 'wire' },
-            { x: 1950, y: 1550, name: "反應爐核心穩定", completed: false, radius: 25, type: 'sequence' },
-            { x: 1300, y: 200, name: "導航雷達重置", completed: false, radius: 25, type: 'wire' },
-            { x: 1300, y: 1800, name: "引擎冷卻系統", completed: false, radius: 25, type: 'sequence' }
-        ];
+        const rightArm = new THREE.Mesh(armGeo, armMat);
+        rightArm.position.set(-1.2, 1, 0);
+        characterGroup.add(rightArm);
 
-        const catData = [
-            { name: "玩家貓", color: "#ffffff" },
-            { name: "小橘貓", color: "#ff9f43" },
-            { name: "阿花", color: "#ff9ff3" },
-            { name: "黑鼻", color: "#576574" },
-            { name: "小白", color: "#c8d6e5" },
-            { name: "三花", color: "#feca57" },
-            { name: "斑斑", color: "#ff6b6b" },
-            { name: "乳牛貓", color: "#222222" }
-        ];
+        // 雙腿
+        const legGeo = new THREE.BoxGeometry(0.7, 1.8, 0.8);
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
 
-        let cats = [];
+        const leftLeg = new THREE.Mesh(legGeo, legMat);
+        leftLeg.position.set(0.4, -0.9, 0);
+        characterGroup.add(leftLeg);
 
-        function initGame() {
-            cats = [];
-            gameState.tasksCompleted = 0;
-            gameState.over = false;
-            gameState.inMeeting = false;
-            gameState.inMinigame = false;
-            gameState.message = "遊戲開始！探索精密航艦，尋找分散各處的艱難任務。";
-            gameState.messageTimer = 180;
+        const rightLeg = new THREE.Mesh(legGeo, legMat);
+        rightLeg.position.set(-0.4, -0.9, 0);
+        characterGroup.add(rightLeg);
 
-            tasks.forEach(t => t.completed = false);
+        scene.add(characterGroup);
 
-            const killerIndex = Math.floor(Math.random() * 8);
+        // --- 4. 動態特效系統 (刀光與能量軌跡) ---
+        let activeEffect = null;
 
-            for (let i = 0; i < 8; i++) {
-                let spawnX = 350 + (i % 4) * 550;
-                let spawnY = 350 + Math.floor(i / 4) * 600;
-
-                cats.push({
-                    id: i,
-                    name: catData[i].name,
-                    color: catData[i].color,
-                    x: spawnX,
-                    y: spawnY,
-                    radius: 18,
-                    speed: 2.2,
-                    isPlayer: (i === 0),
-                    isKiller: (i === killerIndex),
-                    isAlive: true,
-                    isMoving: false,
-                    animTimer: Math.random() * 10,
-                    direction: 1,
-                    wanderTimer: 0,
-                    targetX: spawnX,
-                    targetY: spawnY,
-                    actionCooldown: 0
-                });
-            }
-
-            let player = cats[0];
-            const statusEl = document.getElementById('game-status-text');
-            if (player.isKiller) {
-                statusEl.innerText = "【身分：殺手】暗中擊殺所有船員！";
-                statusEl.style.color = "#ff4444";
-            } else {
-                statusEl.innerText = "【身分：船員】修護任務並找出殺手！";
-                statusEl.style.color = "#44ff44";
-            }
+        // 產生半月形綠光斬擊
+        function triggerGreenSlash() {
+            createSlashEffect(0x00ff88, 3.5);
         }
 
-        initGame();
-        let player = cats[0];
-
-        let keys = { up: false, down: false, left: false, right: false };
-
-        window.addEventListener('keydown', (e) => {
-            if (gameState.over) {
-                if (e.key === 'r' || e.key === 'R' || e.key === 'Enter') {
-                    initGame();
-                    player = cats[0];
-                }
-                return;
-            }
-            if (gameState.inMinigame) {
-                if (e.key === 'Escape') gameState.inMinigame = false;
-                return;
-            }
-            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
-            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
-            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
-            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
-            if (e.key === 'e' || e.key === 'E') triggerAction();
-            if (e.key === 'x' || e.key === 'X') triggerKill();
-            if (e.key === 'y' || e.key === 'Y') triggerMeeting();
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
-            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
-            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
-            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
-        });
-
-        function bindTouchButton(id, keyName) {
-            const btn = document.getElementById(id);
-            if(!btn) return;
-            ['mousedown', 'touchstart'].forEach(evt => {
-                btn.addEventListener(evt, (e) => { 
-                    e.preventDefault(); 
-                    if (gameState.over || gameState.inMinigame) return;
-                    keys[keyName] = true; 
-                    btn.classList.add('active'); 
-                });
-            });
-            ['mouseup', 'touchend', 'mouseleave'].forEach(evt => {
-                btn.addEventListener(evt, (e) => { e.preventDefault(); keys[keyName] = false; btn.classList.remove('active'); });
-            });
+        // 產生藍色爪擊能量軌跡
+        function triggerBlueClaw() {
+            createSlashEffect(0x00bfff, 4.5);
         }
 
-        bindTouchButton('btn-up', 'up');
-        bindTouchButton('btn-down', 'down');
-        bindTouchButton('btn-left', 'left');
-        bindTouchButton('btn-right', 'right');
-
-        document.getElementById('btn-action').addEventListener('click', () => { if(!gameState.over) triggerAction(); });
-        document.getElementById('btn-kill').addEventListener('click', () => { if(!gameState.over) triggerKill(); });
-        document.getElementById('btn-meeting').addEventListener('click', () => { if(!gameState.over) triggerMeeting(); });
-        document.getElementById('btn-x').addEventListener('click', () => { if(!gameState.over) triggerKill(); });
-        document.getElementById('btn-y').addEventListener('click', () => { if(!gameState.over) triggerMeeting(); });
-        document.getElementById('btn-a').addEventListener('click', () => { if(!gameState.over) triggerAction(); });
-        document.getElementById('btn-b').addEventListener('click', () => { 
-            if(gameState.inMinigame) { gameState.inMinigame = false; }
-            else { showMessage("【取消】關閉選單"); }
-        });
-
-        function showMessage(text) {
-            if(gameState.over || gameState.inMeeting || gameState.inMinigame) return;
-            gameState.message = text;
-            gameState.messageTimer = 120;
+        // 產生暗黑惡魔氣場
+        function triggerDarkMagic() {
+            createSlashEffect(0xff0055, 5.0);
         }
 
-        function checkCollision(nx, ny, radius) {
-            for (let wall of walls) {
-                if (nx + radius > wall.x &&
-                    nx - radius < wall.x + wall.w &&
-                    ny + radius > wall.y &&
-                    ny - radius < wall.y + wall.h) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        function createSlashEffect(colorHex, scale) {
+            if (activeEffect) scene.remove(activeEffect);
 
-        function triggerAction() {
-            player = cats[0];
-            if(!player.isAlive || gameState.over || gameState.inMeeting || gameState.inMinigame) return;
-            
-            let foundTask = null;
-            for (let task of tasks) {
-                let dist = Math.hypot(player.x - task.x, player.y - task.y);
-                if (dist < 45 && !task.completed) {
-                    foundTask = task;
-                    break;
-                }
-            }
-
-            if (foundTask) {
-                gameState.activeTask = foundTask;
-                gameState.inMinigame = true;
-                gameState.minigameType = foundTask.type;
-
-                if (gameState.minigameType === 'wire') {
-                    // 電路連線解謎 (3對)
-                    let colors = [
-                        { hex: '#ff4444' },
-                        { hex: '#3b82f6' },
-                        { hex: '#22c55e' }
-                    ];
-                    let leftOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
-                    let rightOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
-
-                    gameState.minigameWires = [];
-                    for(let i=0; i<3; i++) {
-                        gameState.minigameWires.push({
-                            id: i,
-                            color: colors[i].hex,
-                            leftIndex: leftOrder[i],
-                            rightIndex: rightOrder[i],
-                            connected: false
-                        });
-                    }
-                    gameState.selectedLeftNode = null;
-                } else {
-                    // 數字順序解謎 (1 到 5 依序點擊)
-                    gameState.nextSequenceNum = 1;
-                    gameState.sequenceNodes = [];
-                    let nums = [1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
-                    
-                    nums.forEach((num, idx) => {
-                        // 隨機分佈在小遊戲視窗中
-                        let rx = 220 + (idx % 3) * 140 + (Math.random() * 30);
-                        let ry = 200 + Math.floor(idx / 3) * 100 + (Math.random() * 20);
-                        gameState.sequenceNodes.push({
-                            num: num,
-                            x: rx,
-                            y: ry,
-                            clicked: false
-                        });
-                    });
-                }
-            } else {
-                showMessage("附近沒有未完成的任務設施！");
-            }
-        }
-
-        function triggerKill() {
-            player = cats[0];
-            if(!player.isAlive || !player.isKiller || gameState.over || gameState.inMeeting || gameState.inMinigame) return;
-            let killedAny = false;
-            for (let cat of cats) {
-                if (cat.id !== player.id && cat.isAlive) {
-                    let dist = Math.hypot(player.x - cat.x, player.y - cat.y);
-                    if (dist < 45) {
-                        cat.isAlive = false;
-                        showMessage(`你暗中擊殺了 ${cat.name}！`);
-                        killedAny = true;
-                        checkWinConditions();
-                        break;
-                    }
-                }
-            }
-            if(!killedAny) {
-                showMessage("攻擊範圍內沒有可擊殺的目標！");
-            }
-        }
-
-        function triggerMeeting() {
-            player = cats[0];
-            if(!player.isAlive || gameState.over || gameState.inMeeting || gameState.inMinigame) return;
-            gameState.inMeeting = true;
-            gameState.meetingStep = 'voting';
-            gameState.meetingText = "請點擊你想投票懷疑的貓咪（或選擇略過投票）：";
-        }
-
-        function processPlayerVote(votedTargetName) {
-            gameState.meetingStep = 'result';
-            
-            let aliveCats = cats.filter(c => c.isAlive);
-            let votes = {};
-            aliveCats.forEach(c => { votes[c.name] = 0; });
-
-            if (votedTargetName !== 'SKIP') {
-                votes[votedTargetName]++;
-            }
-
-            aliveCats.forEach(cat => {
-                if (cat.isPlayer) return;
-                let candidates = aliveCats.filter(c => c.id !== cat.id);
-                if (candidates.length > 0) {
-                    let votedTarget = candidates[Math.floor(Math.random() * candidates.length)];
-                    votes[votedTarget.name]++;
-                }
+            const geometry = new THREE.RingGeometry(1.5, 2.2, 32, 1, 0, Math.PI);
+            const material = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
             });
 
-            let maxVotes = -1;
-            let suspectName = "";
-            let tie = false;
-            for (let name in votes) {
-                if (votes[name] > maxVotes) {
-                    maxVotes = votes[name];
-                    suspectName = name;
-                    tie = false;
-                } else if (votes[name] === maxVotes && maxVotes > 0) {
-                    tie = true;
-                }
-            }
+            activeEffect = new THREE.Mesh(geometry, material);
+            activeEffect.position.set(0, 1.5, 0);
+            activeEffect.scale.set(0.1, 0.1, 0.1);
+            scene.add(activeEffect);
 
-            if (tie || suspectName === '' || maxVotes === 0) {
-                gameState.meetingText = "投票結果：票數分散或無人最高票，本輪無人被放逐。";
-            } else {
-                let targetedCat = cats.find(c => c.name === suspectName);
-                if (targetedCat) {
-                    targetedCat.isAlive = false;
-                    if (targetedCat.isKiller) {
-                        gameState.meetingText = `投票結果：${suspectName} 獲得最高票被放逐！\n【太棒了！他確實是隱藏的殺手！】`;
-                    } else {
-                        gameState.meetingText = `投票結果：${suspectName} 獲得最高票被放逐！\n【搞錯了...他其實是無辜的船員貓！】`;
-                    }
-                }
-            }
-
-            setTimeout(() => {
-                gameState.inMeeting = false;
-                checkWinConditions();
-            }, 3500);
-        }
-
-        function checkWinConditions() {
-            let aliveCrew = cats.filter(c => !c.isKiller && c.isAlive).length;
-            let aliveKillers = cats.filter(c => c.isKiller && c.isAlive).length;
-
-            if (aliveKillers === 0) {
-                endGame("船員陣營 (CREW-MATES)", "所有殺手已被全數淘汰！");
-            } else if (aliveCrew <= aliveKillers) {
-                endGame("殺手陣營 (IMPOSTOR)", "殺手人數已達優勢，成功掌控太空艙！");
-            }
-        }
-
-        function endGame(title, sub) {
-            gameState.over = true;
-            gameState.winnerTitle = title;
-            gameState.winnerSub = sub;
-        }
-
-        function updateCats() {
-            if(gameState.over || gameState.inMeeting || gameState.inMinigame) return;
-            player = cats[0];
-
-            if(player.isAlive) {
-                let pdx = 0;
-                let pdy = 0;
-                if (keys.up) pdy -= player.speed;
-                if (keys.down) pdy += player.speed;
-                if (keys.left) { pdx -= player.speed; player.direction = -1; }
-                if (keys.right) { pdx += player.speed; player.direction = 1; }
-
-                if (pdx !== 0 || pdy !== 0) {
-                    player.isMoving = true;
-                    player.animTimer += 0.2;
-                    if (!checkCollision(player.x + pdx, player.y, player.radius)) player.x += pdx;
-                    if (!checkCollision(player.x, player.y + pdy, player.radius)) player.y += pdy;
-                } else {
-                    player.isMoving = false;
-                }
-            }
-
-            camera.x = player.x - canvas.width / 2;
-            camera.y = player.y - canvas.height / 2;
-            camera.x = Math.max(0, Math.min(worldWidth - canvas.width, camera.x));
-            camera.y = Math.max(0, Math.min(worldHeight - canvas.height, camera.y));
-
-            for (let i = 1; i < cats.length; i++) {
-                let cat = cats[i];
-                if (!cat.isAlive) continue;
-
-                cat.animTimer += 0.15;
-                cat.wanderTimer--;
-
-                if (cat.wanderTimer <= 0) {
-                    cat.wanderTimer = 80 + Math.random() * 120;
-                    cat.targetX = 100 + Math.random() * (worldWidth - 200);
-                    cat.targetY = 100 + Math.random() * (worldHeight - 200);
-
-                    if (cat.isKiller) {
-                        let victims = cats.filter(c => !c.isKiller && c.isAlive);
-                        if (victims.length > 0) {
-                            let target = victims[Math.floor(Math.random() * victims.length)];
-                            cat.targetX = target.x;
-                            cat.targetY = target.y;
-                        }
-                    }
-                }
-
-                let angle = Math.atan2(cat.targetY - cat.y, cat.targetX - cat.x);
-                let ndx = Math.cos(angle) * cat.speed;
-                let ndy = Math.sin(angle) * cat.speed;
-
-                if (ndx > 0) cat.direction = 1;
-                else if (ndx < 0) cat.direction = -1;
-
-                if (!checkCollision(cat.x + ndx, cat.y, cat.radius)) cat.x += ndx;
-                else cat.wanderTimer = 0;
-
-                if (!checkCollision(cat.x, cat.y + ndy, cat.radius)) cat.y += ndy;
-                else cat.wanderTimer = 0;
-
-                cat.isMoving = true;
-
-                if (cat.isKiller) {
-                    cat.actionCooldown--;
-                    if (cat.actionCooldown <= 0) {
-                        for (let other of cats) {
-                            if (other.id !== cat.id && !other.isKiller && other.isAlive) {
-                                let dist = Math.hypot(cat.x - other.x, cat.y - other.y);
-                                if (dist < 35) {
-                                    other.isAlive = false;
-                                    cat.actionCooldown = 180;
-                                    checkWinConditions();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (gameState.messageTimer > 0) {
-                gameState.messageTimer--;
-            }
-        }
-
-        function drawCat(cat) {
-            ctx.save();
-            ctx.translate(cat.x, cat.y);
-            ctx.scale(cat.direction, 1);
-
-            let bounce = cat.isMoving ? Math.sin(cat.animTimer * 5) * 2 : 0;
-            let legSwing = cat.isMoving ? Math.sin(cat.animTimer * 5) * 3 : 0;
-
-            ctx.translate(0, bounce);
-
-            if (!cat.isAlive) {
-                ctx.rotate(Math.PI / 2);
-                ctx.globalAlpha = 0.5;
-            }
-
-            ctx.fillStyle = cat.color;
-            ctx.strokeStyle = '#222222';
-            ctx.lineWidth = 2;
-
-            ctx.beginPath();
-            ctx.moveTo(-10, 14);
-            ctx.lineTo(-14 + legSwing, 22);
-            ctx.lineTo(-4, 16);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(10, 14);
-            ctx.lineTo(14 - legSwing, 22);
-            ctx.lineTo(4, 16);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
-            ctx.fillStyle = cat.color;
-            ctx.fill();
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = '#111111';
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(-13, -10);
-            ctx.lineTo(-18, -20);
-            ctx.lineTo(-5, -14);
-            ctx.closePath();
-            ctx.fillStyle = cat.color;
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(13, -10);
-            ctx.lineTo(18, -20);
-            ctx.lineTo(5, -14);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#111111';
-            ctx.beginPath(); ctx.arc(-5, -2, 2, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(5, -2, 2, 0, Math.PI * 2); ctx.fill();
-
-            ctx.strokeStyle = '#111111';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(0, 1); ctx.lineTo(-2, 3.5);
-            ctx.moveTo(0, 1); ctx.lineTo(2, 3.5);
-            ctx.moveTo(-3, 3.5);
-            ctx.quadraticCurveTo(0, 7, 3, 3.5);
-            ctx.stroke();
-
-            ctx.restore();
-            ctx.save();
-            ctx.translate(cat.x, cat.y - 28);
-            ctx.fillStyle = cat.isPlayer ? '#ffcc00' : '#ffffff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(cat.isPlayer ? "▼ YOU (" + cat.name + ")" : cat.name, 0, 0);
-
-            ctx.restore();
-        }
-
-        function draw() {
-            ctx.fillStyle = '#0b132b';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-
-            ctx.strokeStyle = '#1c2541';
-            ctx.lineWidth = 1;
-            for (let i = 0; i < worldWidth; i += 40) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, worldHeight); ctx.stroke();
-            }
-            for (let j = 0; j < worldHeight; j += 40) {
-                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(worldWidth, j); ctx.stroke();
-            }
-
-            tasks.forEach(task => {
-                ctx.beginPath();
-                ctx.arc(task.x, task.y, task.radius, 0, Math.PI * 2);
-                ctx.fillStyle = task.completed ? 'rgba(46, 204, 113, 0.3)' : 'rgba(241, 196, 15, 0.3)';
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = task.completed ? '#2ecc71' : '#f1c40f';
-                ctx.stroke();
-
-                ctx.fillStyle = task.completed ? '#2ecc71' : '#f1c40f';
-                ctx.font = 'bold 13px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(task.completed ? '✓' : '!', task.x, task.y - 4);
-                ctx.font = '9px sans-serif';
-                ctx.fillText(task.name, task.x, task.y + 18);
-            });
-
-            ctx.fillStyle = '#3a506b';
-            ctx.strokeStyle = '#5bc0be';
-            ctx.lineWidth = 3;
-            walls.forEach(wall => {
-                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
-            });
-
-            cats.forEach(cat => drawCat(cat));
-
-            ctx.restore();
-
-            // ================= 舒適的近距離視野（光源感，不至於太黑） =================
-            if (!gameState.over && !gameState.inMeeting && !gameState.inMinigame) {
-                ctx.save();
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = 'rgba(8, 12, 24, 0.75)'; // 柔和的黑暗遮罩
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                let playerScreenX = player.x - camera.x;
-                let playerScreenY = player.y - camera.y;
-                let visionRadius = 210; // 適當的近距離視野
-
-                ctx.globalCompositeOperation = 'destination-out';
-                let gradient = ctx.createRadialGradient(
-                    playerScreenX, playerScreenY, 30,
-                    playerScreenX, playerScreenY, visionRadius
+            // 動態放大與淡出動畫
+            let progress = 0;
+            function animateEffect() {
+                if (!activeEffect) return;
+                progress += 0.08;
+                activeEffect.scale.set(
+                    (0.1 + progress) * scale,
+                    (0.1 + progress) * scale,
+                    (0.1 + progress) * scale
                 );
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                activeEffect.rotation.z -= 0.1;
+                activeEffect.material.opacity = Math.max(0, 1 - progress);
 
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(playerScreenX, playerScreenY, visionRadius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-
-            if (gameState.messageTimer > 0 && !gameState.inMeeting && !gameState.over && !gameState.inMinigame) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                ctx.fillRect(120, 15, 560, 35);
-                ctx.strokeStyle = '#ffcc00';
-                ctx.strokeRect(120, 15, 560, 35);
-                ctx.fillStyle = '#ffcc00';
-                ctx.font = '13px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(gameState.message, 400, 37);
-            }
-
-            // ================= 任務解謎小遊戲 UI =================
-            if (gameState.inMinigame) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = '#1e293b';
-                ctx.strokeStyle = '#38bdf8';
-                ctx.lineWidth = 4;
-                ctx.fillRect(150, 60, 500, 330);
-                ctx.strokeRect(150, 60, 500, 330);
-
-                ctx.fillStyle = '#38bdf8';
-                ctx.font = 'bold 18px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`🔧 修理任務：${gameState.activeTask.name} 🔧`, 400, 95);
-
-                gameState.minigameButtons = [];
-
-                if (gameState.minigameType === 'wire') {
-                    ctx.fillStyle = '#cbd5e1';
-                    ctx.font = '13px sans-serif';
-                    ctx.fillText("請點擊左側電極，再點擊右側對應顏色進行連線！", 400, 125);
-
-                    let startY = 170;
-                    let spacing = 65;
-
-                    gameState.minigameWires.forEach(wire => {
-                        let lx = 260, ly = startY + wire.leftIndex * spacing;
-                        let rx = 540, ry = startY + wire.rightIndex * spacing;
-                        if (wire.connected) {
-                            ctx.strokeStyle = wire.color;
-                            ctx.lineWidth = 5;
-                            ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx, ry); ctx.stroke();
-                        }
-                    });
-
-                    for (let i = 0; i < 3; i++) {
-                        let wire = gameState.minigameWires.find(w => w.leftIndex === i);
-                        let lx = 260, ly = startY + i * spacing;
-                        ctx.fillStyle = wire.connected ? '#1e293b' : wire.color;
-                        ctx.strokeStyle = wire.connected ? '#475569' : '#ffffff';
-                        ctx.lineWidth = 3;
-                        ctx.beginPath(); ctx.arc(lx, ly, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-                        if (gameState.selectedLeftNode === i && !wire.connected) {
-                            ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 3;
-                            ctx.strokeRect(lx - 24, ly - 24, 48, 48);
-                        }
-                        gameState.minigameButtons.push({ type: 'wire_left', index: i, x: lx, y: ly, radius: 18 });
-                    }
-
-                    for (let i = 0; i < 3; i++) {
-                        let wire = gameState.minigameWires.find(w => w.rightIndex === i);
-                        let rx = 540, ry = startY + i * spacing;
-                        ctx.fillStyle = wire.connected ? '#1e293b' : wire.color;
-                        ctx.strokeStyle = wire.connected ? '#475569' : '#ffffff';
-                        ctx.lineWidth = 3;
-                        ctx.beginPath(); ctx.arc(rx, ry, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                        gameState.minigameButtons.push({ type: 'wire_right', index: i, x: rx, y: ry, radius: 18 });
-                    }
-
-                    if (gameState.minigameWires.every(w => w.connected)) {
-                        finishMinigame();
-                    }
-
-                } else if (gameState.minigameType === 'sequence') {
-                    ctx.fillStyle = '#cbd5e1';
-                    ctx.font = '13px sans-serif';
-                    ctx.fillText(`請依照順序點擊數字：【 當前目標: ${gameState.nextSequenceNum} 】`, 400, 125);
-
-                    gameState.sequenceNodes.forEach(node => {
-                        ctx.fillStyle = node.clicked ? '#1e293b' : '#3b82f6';
-                        ctx.strokeStyle = node.clicked ? '#475569' : '#ffffff';
-                        ctx.lineWidth = 3;
-                        ctx.beginPath(); ctx.arc(node.x, node.y, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-                        ctx.fillStyle = node.clicked ? '#64748b' : '#ffffff';
-                        ctx.font = 'bold 18px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(node.num, node.x, node.y + 6);
-
-                        gameState.minigameButtons.push({ type: 'seq_node', node: node, x: node.x, y: node.y, radius: 24 });
-                    });
+                if (progress < 1) {
+                    requestAnimationFrame(animateEffect);
+                } else {
+                    scene.remove(activeEffect);
+                    activeEffect = null;
                 }
             }
-
-            function finishMinigame() {
-                ctx.fillStyle = '#22c55e';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("🎉 恭喜！任務修復成功！", 400, 360);
-
-                setTimeout(() => {
-                    if (gameState.inMinigame) {
-                        gameState.inMinigame = false;
-                        gameState.activeTask.completed = true;
-                        gameState.tasksCompleted++;
-                        showMessage(`成功修復任務：${gameState.activeTask.name} (${gameState.tasksCompleted}/${gameState.totalTasks})`);
-                        if (gameState.tasksCompleted >= gameState.totalTasks) {
-                            endGame("船員陣營 (CREW-MATES)", "所有太空任務已成功修復完畢！");
-                        }
-                    }
-                }, 800);
-            }
-
-            // ================= 緊急會議 UI =================
-            if (gameState.inMeeting) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = '#1e293b';
-                ctx.strokeStyle = '#3b82f6';
-                ctx.lineWidth = 4;
-                ctx.fillRect(100, 45, 600, 360);
-                ctx.strokeRect(100, 45, 600, 360);
-
-                ctx.fillStyle = '#60a5fa';
-                ctx.font = 'bold 18px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("🚨 緊急會議：討論與投票表決 🚨", 400, 80);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '14px sans-serif';
-                ctx.fillText(gameState.meetingText, 400, 110);
-
-                gameState.voteButtons = [];
-
-                if (gameState.meetingStep === 'voting') {
-                    let aliveCats = cats.filter(c => c.isAlive);
-                    let startX = 130, startY = 140, btnWidth = 170, btnHeight = 45;
-
-                    aliveCats.forEach((cat, index) => {
-                        let col = index % 3, row = Math.floor(index / 3);
-                        let bx = startX + col * 185, by = startY + row * 55;
-
-                        ctx.fillStyle = cat.isPlayer ? '#334155' : '#27272a';
-                        ctx.strokeStyle = cat.color;
-                        ctx.lineWidth = 2;
-                        ctx.fillRect(bx, by, btnWidth, btnHeight);
-                        ctx.strokeRect(bx, by, btnWidth, btnHeight);
-
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 13px sans-serif';
-                        ctx.textAlign = 'left';
-                        ctx.fillText(`投給: ${cat.name}`, bx + 12, by + 27);
-
-                        gameState.voteButtons.push({ x: bx, y: by, w: btnWidth, h: btnHeight, name: cat.name });
-                    });
-
-                    let skipX = 305, skipY = 330, skipW = 190, skipH = 45;
-                    ctx.fillStyle = '#475569';
-                    ctx.strokeStyle = '#94a3b8';
-                    ctx.fillRect(skipX, skipY, skipW, skipH);
-                    ctx.strokeRect(skipX, skipY, skipW, skipH);
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 14px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText("略過投票 (Skip)", skipX + skipW / 2, skipY + 27);
-
-                    gameState.voteButtons.push({ x: skipX, y: skipY, w: skipW, h: skipH, name: 'SKIP' });
-                } else if (gameState.meetingStep === 'result') {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '15px sans-serif';
-                    let lines = gameState.meetingText.split('\n');
-                    for (let i = 0; i < lines.length; i++) {
-                        ctx.fillText(lines[i], 400, 200 + (i * 30));
-                    }
-                }
-            }
-
-            // ================= 遊戲結束畫面 =================
-            if (gameState.over) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = '#111827';
-                ctx.strokeStyle = gameState.winnerTitle.includes("船員") ? '#22c55e' : '#ef4444';
-                ctx.lineWidth = 4;
-                ctx.fillRect(130, 70, 540, 310);
-                ctx.strokeRect(130, 70, 540, 310);
-
-                ctx.fillStyle = gameState.winnerTitle.includes("船員") ? '#4ade80' : '#f87171';
-                ctx.font = 'bold 26px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("🏆 遊戲結束：勝者揭曉 🏆", 400, 120);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 22px sans-serif';
-                ctx.fillText("【 獲勝方：" + gameState.winnerTitle + " 】", 400, 180);
-
-                ctx.fillStyle = '#cbd5e1';
-                ctx.font = '15px sans-serif';
-                ctx.fillText(gameState.winnerSub, 400, 230);
-
-                let killerCat = cats.find(c => c.isKiller);
-                ctx.fillStyle = '#fca5a5';
-                ctx.font = '13px sans-serif';
-                ctx.fillText("本局潛伏的殺手是：【 " + killerCat.name + " 】", 400, 280);
-
-                ctx.fillStyle = '#3b82f6';
-                ctx.fillRect(270, 310, 260, 45);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.fillText("點擊此處或按 R 鍵重新開始", 400, 338);
-            }
+            animateEffect();
         }
 
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
-
-            if (gameState.over) {
-                initGame();
-                player = cats[0];
-                return;
-            }
-
-            if (gameState.inMinigame) {
-                for (let btn of gameState.minigameButtons) {
-                    let dist = Math.hypot(clickX - btn.x, clickY - btn.y);
-                    if (dist <= btn.radius + 5) {
-                        if (btn.type === 'wire_left') {
-                            gameState.selectedLeftNode = btn.index;
-                        } else if (btn.type === 'wire_right' && gameState.selectedLeftNode !== null) {
-                            let leftWire = gameState.minigameWires.find(w => w.leftIndex === gameState.selectedLeftNode);
-                            if (leftWire && leftWire.rightIndex === btn.index) {
-                                leftWire.connected = true;
-                            }
-                            gameState.selectedLeftNode = null;
-                        } else if (btn.type === 'seq_node') {
-                            if (!btn.node.clicked && btn.node.num === gameState.nextSequenceNum) {
-                                btn.node.clicked = true;
-                                gameState.nextSequenceNum++;
-                                if (gameState.nextSequenceNum > 5) {
-                                    finishMinigame();
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-                return;
-            }
-
-            if (gameState.inMeeting && gameState.meetingStep === 'voting') {
-                for (let btn of gameState.voteButtons) {
-                    if (clickX >= btn.x && clickX <= btn.x + btn.w &&
-                        clickY >= btn.y && clickY <= btn.y + btn.h) {
-                        processPlayerVote(btn.name);
-                        break;
-                    }
-                }
-            }
+        // 畫面點擊直接觸發預設特效
+        window.addEventListener('pointerdown', () => {
+            triggerGreenSlash();
         });
 
-        function gameLoop() {
-            updateCats();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
+        // --- 5. 背景地板 ---
+        const floorGeo = new THREE.PlaneGeometry(50, 50);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x14141c, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1.8;
+        scene.add(floor);
 
-        requestAnimationFrame(gameLoop);
+        // --- 6. 動畫迴圈 ---
+        let clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+
+            let elapsedTime = clock.getElapsedTime();
+
+            // 讓角色有輕微的呼吸浮動感
+            characterGroup.position.y = Math.sin(elapsedTime * 3) * 0.08;
+            characterGroup.rotation.y = Math.sin(elapsedTime * 1) * 0.15;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 視窗縮放適應
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
