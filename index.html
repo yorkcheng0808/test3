@@ -3,258 +3,526 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox 角色與特效展示舞台</title>
+    <title>Flag Wars - Switch 手把完整版</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #0b0b10;
+            background-color: #0b0e14;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
-
-        #info-panel {
+        #ui-container {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #ffffff;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(0, 255, 136, 0.4);
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            top: 15px;
+            left: 15px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             pointer-events: none;
-            z-index: 10;
+            font-size: 18px;
         }
-
-        h1 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-            color: #00ff88;
-            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
-        }
-
-        p {
-            margin: 0;
-            font-size: 14px;
-            color: #aaa;
-        }
-
-        #controls {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 15px;
-            z-index: 10;
-        }
-
-        button {
-            background: linear-gradient(135deg, #111, #222);
-            color: #fff;
-            border: 2px solid #00ff88;
-            padding: 10px 20px;
+        .score-board {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px 22px;
             border-radius: 8px;
-            cursor: pointer;
+            border: 2px solid #555;
+            margin-bottom: 10px;
+        }
+        #weapon-hud {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(0,0,0,0.85);
+            color: #ffaa00;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 20px;
             font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+            border: 2px solid #ffaa00;
         }
-
-        button:hover {
-            background: #00ff88;
-            color: #000;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
-            transform: translateY(-2px);
+        #controller-status {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            background: rgba(0,0,0,0.75);
+            color: #00ff88;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 15px;
+            border: 1px solid #00ff88;
         }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #ff3333;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.8);
+            color: #ddd;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid #444;
+        }
+        span.red { color: #ff4d4d; font-weight: bold; }
+        span.blue { color: #4da6ff; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="info-panel">
-        <h1>Roblox 3D 戰鬥特效舞台</h1>
-        <p>點擊下方按鈕或畫面任意處，觸發全螢幕動態斬擊與爪擊特效！</p>
+    <div id="crosshair"></div>
+    
+    <div id="ui-container">
+        <div class="score-board">
+            紅隊分數: <span id="redScore">0</span> | 藍隊分數: <span id="blueScore">0</span><br>
+            狀態: <span id="gameStatus">搶旗戰爭 3v3 激戰中</span>
+        </div>
     </div>
 
-    <div id="controls">
-        <button onclick="triggerGreenSlash()">綠光雙刀斬</button>
-        <button onclick="triggerBlueClaw()">藍色能量爪擊</button>
-        <button onclick="triggerDarkMagic()">暗黑惡魔氣場</button>
+    <div id="controller-status">手把狀態: <span id="gpState">請按任意手把按鈕連線</span></div>
+    <div id="weapon-hud">當前武器: <span id="currentWeapon">突擊步槍</span></div>
+
+    <div id="instructions">
+        <b>Switch Pro 手把操作指南：</b><br>
+        [ 左搖桿 ] 旋轉視角與方向<br>
+        [ 右搖桿 ] 移動 3D Roblox 人偶<br>
+        [ A 按鈕 ] 切換武器 (突擊步槍 ⇄ 砍擊刀光刃)<br>
+        [ 上方板機 (ZR / R) ] 發射子彈 / 釋放砍擊特效<br>
+        [ X 按鈕 / 滑鼠右鍵 ] 挖地板地道（破壞障礙）
     </div>
 
-    <!-- 引入 Three.js 與特效相關函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // --- 1. 基礎場景與渲染設置 ---
+        // --- 初始化 3D 遊戲場景 ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x0b0b10, 0.03);
+        scene.background = new THREE.Color(0x0f141c);
+        scene.fog = new THREE.FogExp2(0x0f141c, 0.012);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 3, 7);
-
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-
-        // --- 2. 燈光設置 ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        // 燈光
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(5, 10, 7);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(40, 80, 40);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        const pointLight = new THREE.PointLight(0x00ff88, 2, 10);
-        pointLight.position.set(0, 2, 0);
-        scene.add(pointLight);
+        // --- 120x120 大型地圖與破壞方塊 (地下戰爭挖地道系統) ---
+        const mapSize = 60;
+        const blockSize = 2;
+        const blocks = [];
+        const blockGroup = new THREE.Group();
+        scene.add(blockGroup);
 
-        // --- 3. 建立 Roblox 風格角色 (以綠衣骷髏戰士為藍本) ---
-        const characterGroup = new THREE.Group();
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x444f5a });
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0x223344 });
 
-        // 頭部 (黑色方塊)
-        const headGeo = new THREE.BoxGeometry(1, 1, 1);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 2.5;
-        characterGroup.add(head);
+        function createLargeMap() {
+            for (let x = -mapSize; x <= mapSize; x += blockSize) {
+                for (let z = -mapSize; z <= mapSize; z += blockSize) {
+                    let h = 2;
+                    if (Math.abs(x) < 15 && Math.abs(z) < 15) h = 0.5;
+                    else if (Math.sin(x * 0.15) * Math.cos(z * 0.15) > 0.3) h = 4.5;
+                    else if (Math.abs(x - z) % 12 === 0) h = 3;
 
-        // 眼睛 (紅色十字星光芒)
-        const eyeGeo = new THREE.BoxGeometry(0.3, 0.3, 0.1);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-        const eye = new THREE.Mesh(eyeGeo, eyeMat);
-        eye.position.set(0.2, 2.5, 0.51);
-        characterGroup.add(eye);
-
-        // 軀幹 (螢光綠 + 骷髏裝飾感)
-        const torsoGeo = new THREE.BoxGeometry(1.5, 2, 1);
-        const torsoMat = new THREE.MeshStandardMaterial({ color: 0x39ff14, roughness: 0.2 });
-        const torso = new THREE.Mesh(torsoGeo, torsoMat);
-        torso.position.y = 1;
-        characterGroup.add(torso);
-
-        // 雙臂
-        const armGeo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
-        const armMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        
-        const leftArm = new THREE.Mesh(armGeo, armMat);
-        leftArm.position.set(1.2, 1, 0);
-        characterGroup.add(leftArm);
-
-        const rightArm = new THREE.Mesh(armGeo, armMat);
-        rightArm.position.set(-1.2, 1, 0);
-        characterGroup.add(rightArm);
-
-        // 雙腿
-        const legGeo = new THREE.BoxGeometry(0.7, 1.8, 0.8);
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-
-        const leftLeg = new THREE.Mesh(legGeo, legMat);
-        leftLeg.position.set(0.4, -0.9, 0);
-        characterGroup.add(leftLeg);
-
-        const rightLeg = new THREE.Mesh(legGeo, legMat);
-        rightLeg.position.set(-0.4, -0.9, 0);
-        characterGroup.add(rightLeg);
-
-        scene.add(characterGroup);
-
-        // --- 4. 動態特效系統 (刀光與能量軌跡) ---
-        let activeEffect = null;
-
-        // 產生半月形綠光斬擊
-        function triggerGreenSlash() {
-            createSlashEffect(0x00ff88, 3.5);
-        }
-
-        // 產生藍色爪擊能量軌跡
-        function triggerBlueClaw() {
-            createSlashEffect(0x00bfff, 4.5);
-        }
-
-        // 產生暗黑惡魔氣場
-        function triggerDarkMagic() {
-            createSlashEffect(0xff0055, 5.0);
-        }
-
-        function createSlashEffect(colorHex, scale) {
-            if (activeEffect) scene.remove(activeEffect);
-
-            const geometry = new THREE.RingGeometry(1.5, 2.2, 32, 1, 0, Math.PI);
-            const material = new THREE.MeshBasicMaterial({
-                color: colorHex,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.9
-            });
-
-            activeEffect = new THREE.Mesh(geometry, material);
-            activeEffect.position.set(0, 1.5, 0);
-            activeEffect.scale.set(0.1, 0.1, 0.1);
-            scene.add(activeEffect);
-
-            // 動態放大與淡出動畫
-            let progress = 0;
-            function animateEffect() {
-                if (!activeEffect) return;
-                progress += 0.08;
-                activeEffect.scale.set(
-                    (0.1 + progress) * scale,
-                    (0.1 + progress) * scale,
-                    (0.1 + progress) * scale
-                );
-                activeEffect.rotation.z -= 0.1;
-                activeEffect.material.opacity = Math.max(0, 1 - progress);
-
-                if (progress < 1) {
-                    requestAnimationFrame(animateEffect);
-                } else {
-                    scene.remove(activeEffect);
-                    activeEffect = null;
+                    const geom = new THREE.BoxGeometry(blockSize, h, blockSize);
+                    const mesh = new THREE.Mesh(geom, h > 3 ? wallMat : floorMat);
+                    mesh.position.set(x, h / 2, z);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    blockGroup.add(mesh);
+                    blocks.push(mesh);
                 }
             }
-            animateEffect();
+        }
+        createLargeMap();
+
+        // --- Roblox 區塊人偶系統 (方頭、方軀幹、四肢) ---
+        function createRobloxAvatar(teamColor) {
+            const characterGroup = new THREE.Group();
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xf3d2bc });
+            const shirtMat = new THREE.MeshLambertMaterial({ color: teamColor });
+            const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1b2838 });
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
+            head.position.y = 2.2;
+            characterGroup.add(head);
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 0.6), shirtMat);
+            torso.position.y = 1.3;
+            characterGroup.add(torso);
+
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4), shirtMat);
+            leftArm.position.set(-0.7, 1.3, 0);
+            characterGroup.add(leftArm);
+
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4), shirtMat);
+            rightArm.position.set(0.7, 1.3, 0);
+            characterGroup.add(rightArm);
+
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.2, 0.45), pantsMat);
+            leftLeg.position.set(-0.25, 0.6, 0);
+            characterGroup.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.2, 0.45), pantsMat);
+            rightLeg.position.set(0.25, 0.6, 0);
+            characterGroup.add(rightLeg);
+
+            return { group: characterGroup, parts: { head, torso, leftArm, rightArm, leftLeg, rightLeg } };
         }
 
-        // 畫面點擊直接觸發預設特效
-        window.addEventListener('pointerdown', () => {
-            triggerGreenSlash();
+        // --- 玩家與 AI 實體類別 (3v3 戰略分組) ---
+        class PlayerEntity {
+            constructor(isControlled, team, x, z) {
+                this.isControlled = isControlled;
+                this.team = team;
+                this.color = (team === 'red') ? 0xff3b3b : 0x3b82f6;
+                this.avatarData = createRobloxAvatar(this.color);
+                this.mesh = this.avatarData.group;
+                this.mesh.position.set(x, 0, z);
+                scene.add(this.mesh);
+
+                this.health = 100;
+                this.hasFlag = false;
+                this.speed = 0.14;
+            }
+
+            update(targetPos) {
+                if (this.health <= 0) return;
+                if (!this.isControlled) {
+                    let targetX = targetPos.x;
+                    let targetZ = targetPos.z;
+                    if (this.hasFlag) {
+                        targetX = (this.team === 'red') ? -50 : 50;
+                        targetZ = 0;
+                    }
+
+                    const dx = targetX - this.mesh.position.x;
+                    const dz = targetZ - this.mesh.position.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+
+                    if (dist > 1.5) {
+                        this.mesh.position.x += (dx / dist) * (this.speed * 0.85);
+                        this.mesh.position.z += (dz / dist) * (this.speed * 0.85);
+                        this.mesh.rotation.y = Math.atan2(dx, dz);
+                    }
+
+                    const t = Date.now() * 0.01;
+                    this.avatarData.parts.leftArm.rotation.x = Math.sin(t) * 0.5;
+                    this.avatarData.parts.rightArm.rotation.x = -Math.sin(t) * 0.5;
+                }
+            }
+        }
+
+        const entities = [];
+        entities.push(new PlayerEntity(true, 'red', -50, 0));  // 真實玩家
+        entities.push(new PlayerEntity(false, 'red', -48, 8)); // 紅隊 AI 1
+        entities.push(new PlayerEntity(false, 'red', -48, -8)); // 紅隊 AI 2
+        entities.push(new PlayerEntity(false, 'blue', 50, 0)); // 藍隊 AI 1
+        entities.push(new PlayerEntity(false, 'blue', 48, 8)); // 藍隊 AI 2
+        entities.push(new PlayerEntity(false, 'blue', 48, -8)); // 藍隊 AI 3
+
+        // --- 旗幟系統 ---
+        const flags = [
+            { team: 'red', position: new THREE.Vector3(-55, 0, 0), holder: null, mesh: createFlagMesh(0xff3b3b) },
+            { team: 'blue', position: new THREE.Vector3(55, 0, 0), holder: null, mesh: createFlagMesh(0x3b82f6) }
+        ];
+
+        function createFlagMesh(color) {
+            const group = new THREE.Group();
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5), new THREE.MeshBasicMaterial({ color: 0x999999 }));
+            pole.position.y = 1.75;
+            group.add(pole);
+
+            const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.1), new THREE.MeshBasicMaterial({ color: color }));
+            cloth.position.set(0.6, 2.9, 0);
+            group.add(cloth);
+
+            scene.add(group);
+            return group;
+        }
+        flags.forEach(f => f.mesh.position.copy(f.position));
+
+        // --- 武器與特效系統 ---
+        let currentWeaponIndex = 0; // 0: 突擊步槍, 1: 砍擊刀劍
+        const weaponNames = ["突擊步槍", "砍擊刀劍"];
+        const bullets = [];
+        const slashEffects = [];
+
+        function shootBullet(pos, dir, team) {
+            const bGeom = new THREE.SphereGeometry(0.25, 8, 8);
+            const bMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+            const bMesh = new THREE.Mesh(bGeom, bMat);
+            bMesh.position.copy(pos);
+            bMesh.position.y += 1.5;
+            scene.add(bMesh);
+            bullets.push({ mesh: bMesh, dir: dir, team: team, life: 100 });
+        }
+
+        function triggerSlashEffect(pos, dir, team) {
+            const slashGroup = new THREE.Group();
+            slashGroup.position.copy(pos);
+            slashGroup.position.y += 1.5;
+
+            const arcMat = new THREE.MeshBasicMaterial({ color: 0x2288ff, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+            const arcGeom = new THREE.RingGeometry(0.8, 1.8, 16, 1, 0, Math.PI);
+            const arcMesh = new THREE.Mesh(arcGeom, arcMat);
+            slashGroup.add(arcMesh);
+            scene.add(slashGroup);
+
+            slashEffects.push({ group: slashGroup, dir: dir.clone(), life: 30, team: team });
+        }
+
+        // 挖地板破壞障礙函數
+        function digBlock() {
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(blockGroup.children);
+            if (intersects.length > 0 && intersects[0].distance < 12) {
+                blockGroup.remove(intersects[0].object);
+                const idx = blocks.indexOf(intersects[0].object);
+                if (idx > -1) blocks.splice(idx, 1);
+            }
+        }
+
+        // --- 備用鍵盤控制（若無手把時也可遊玩） ---
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'Space' || e.code === 'KeyC') {
+                currentWeaponIndex = (currentWeaponIndex + 1) % weaponNames.length;
+                document.getElementById('currentWeapon').innerText = weaponNames[currentWeaponIndex];
+            }
+            if (e.code === 'KeyX') digBlock();
         });
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // --- 5. 背景地板 ---
-        const floorGeo = new THREE.PlaneGeometry(50, 50);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x14141c, roughness: 0.8 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -1.8;
-        scene.add(floor);
+        let cameraAngleY = 0, cameraAngleX = 0.35;
+        let prevButtonA = false, prevButtonZR = false, prevButtonX = false;
 
-        // --- 6. 動畫迴圈 ---
-        let clock = new THREE.Clock();
+        // --- 遊戲主迴圈 (整合 Gamepad API 支援 Switch Pro 手把) ---
+        let redScore = 0, blueScore = 0;
+
         function animate() {
             requestAnimationFrame(animate);
 
-            let elapsedTime = clock.getElapsedTime();
+            const player = entities[0];
+            let mx = 0, mz = 0;
+            let fireTriggered = false;
 
-            // 讓角色有輕微的呼吸浮動感
-            characterGroup.position.y = Math.sin(elapsedTime * 3) * 0.08;
-            characterGroup.rotation.y = Math.sin(elapsedTime * 1) * 0.15;
+            // 讀取 Switch Pro 手把狀態
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) { gp = gamepads[i]; break; }
+            }
 
-            controls.update();
+            if (gp) {
+                document.getElementById('gpState').innerText = "已連線 (Switch Pro)";
+                document.getElementById('gpState').style.color = "#00ff88";
+
+                // 右搖桿：控制移動 (axes[2] 水平, axes[3] 垂直)
+                const moveX = gp.axes[2];
+                const moveZ = gp.axes[3];
+                if (Math.abs(moveX) > 0.15 || Math.abs(moveZ) > 0.15) {
+                    mx = moveX;
+                    mz = moveZ;
+                }
+
+                // 左搖桿：控制視角旋轉 (axes[0] 水平, axes[1] 垂直)
+                const lookX = gp.axes[0];
+                const lookY = gp.axes[1];
+                if (Math.abs(lookX) > 0.15) cameraAngleY -= lookX * 0.04;
+                if (Math.abs(lookY) > 0.15) {
+                    cameraAngleX += lookY * 0.03;
+                    cameraAngleX = Math.max(0.1, Math.min(1.3, cameraAngleX));
+                }
+
+                // A 按鈕 (通常為 buttons[0])：變換武器
+                const buttonA = gp.buttons[0] && gp.buttons[0].pressed;
+                if (buttonA && !prevButtonA) {
+                    currentWeaponIndex = (currentWeaponIndex + 1) % weaponNames.length;
+                    document.getElementById('currentWeapon').innerText = weaponNames[currentWeaponIndex];
+                }
+                prevButtonA = buttonA;
+
+                // X 按鈕 (通常為 buttons[2])：挖地板
+                const buttonX = gp.buttons[2] && gp.buttons[2].pressed;
+                if (buttonX && !prevButtonX) {
+                    digBlock();
+                }
+                prevButtonX = buttonX;
+
+                // 上方板機 ZR (通常為 buttons[7] 或 buttons[5])：發射攻擊
+                const buttonZR = (gp.buttons[7] && gp.buttons[7].pressed) || (gp.buttons[5] && gp.buttons[5].pressed);
+                if (buttonZR && !prevButtonZR) {
+                    fireTriggered = true;
+                }
+                prevButtonZR = buttonZR;
+
+            } else {
+                document.getElementById('gpState').innerText = "未偵測到手把 (使用鍵盤 WASD + 滑鼠)";
+                document.getElementById('gpState').style.color = "#ffaa00";
+
+                // 備用鍵盤移動
+                if (keys['KeyW']) mz -= 1;
+                if (keys['KeyS']) mz += 1;
+                if (keys['KeyA']) mx -= 1;
+                if (keys['KeyD']) mz += 1; // 修正
+            }
+
+            // 鍵盤備用射擊 (滑鼠左鍵)
+            // 略 (透過 mousedown 處理)
+
+            // 套用移動
+            if (mx !== 0 || mz !== 0) {
+                const moveAngle = Math.atan2(mx, mz) + cameraAngleY;
+                player.mesh.position.x += Math.sin(moveAngle) * player.speed;
+                player.mesh.position.z += Math.cos(moveAngle) * player.speed;
+                player.mesh.rotation.y = moveAngle;
+
+                const t = Date.now() * 0.015;
+                player.avatarData.parts.leftLeg.rotation.x = Math.sin(t) * 0.6;
+                player.avatarData.parts.rightLeg.rotation.x = -Math.sin(t) * 0.6;
+            }
+
+            // 若手把板機按下或滑鼠觸發攻擊
+            if (fireTriggered) {
+                const dir = new THREE.Vector3(Math.sin(cameraAngleY), 0, Math.cos(cameraAngleY));
+                if (currentWeaponIndex === 0) {
+                    shootBullet(player.mesh.position, dir, 'red');
+                } else {
+                    triggerSlashEffect(player.mesh.position, dir, 'red');
+                }
+            }
+
+            // 攝影機跟隨
+            const cx = player.mesh.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * 9;
+            const cy = player.mesh.position.y + Math.sin(cameraAngleX) * 9 + 2;
+            const cz = player.mesh.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * 9;
+            camera.position.set(cx, cy, cz);
+            camera.lookAt(player.mesh.position.x, player.mesh.position.y + 1.5, player.mesh.position.z);
+
+            // AI 更新
+            entities.forEach(ent => {
+                if (!ent.isControlled) {
+                    const targetFlag = flags.find(f => f.team !== ent.team);
+                    ent.update(targetFlag ? targetFlag.mesh.position : player.mesh.position);
+                }
+            });
+
+            // 子彈移動
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.mesh.position.addScaledVector(b.dir, 0.8);
+                b.life--;
+
+                entities.forEach(ent => {
+                    if (ent.team !== b.team && ent.mesh.position.distanceTo(b.mesh.position) < 1.2) {
+                        ent.health -= 25;
+                        b.life = 0;
+                        if (ent.health <= 0) {
+                            ent.health = 100;
+                            ent.mesh.position.set(ent.team === 'red' ? -50 : 50, 0, (Math.random() - 0.5) * 15);
+                        }
+                    }
+                });
+
+                if (b.life <= 0) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // 砍擊特效移動
+            for (let i = slashEffects.length - 1; i >= 0; i--) {
+                const s = slashEffects[i];
+                s.group.position.addScaledVector(s.dir, 0.9);
+                s.group.rotation.z += 0.2;
+                s.group.scale.multiplyScalar(1.03);
+                s.life--;
+
+                if (s.life <= 0) {
+                    scene.remove(s.group);
+                    slashEffects.splice(i, 1);
+                } else {
+                    entities.forEach(ent => {
+                        if (ent.team !== s.team && ent.mesh.position.distanceTo(s.group.position) < 2.5) {
+                            ent.health -= 35;
+                            s.life = 0;
+                            if (ent.health <= 0) {
+                                ent.health = 100;
+                                ent.mesh.position.set(ent.team === 'red' ? -50 : 50, 0, (Math.random() - 0.5) * 15);
+                            }
+                        }
+                    });
+                }
+            }
+
+            // 搶旗計分
+            flags.forEach(flag => {
+                if (!flag.holder) {
+                    entities.forEach(ent => {
+                        if (ent.team !== flag.team && ent.mesh.position.distanceTo(flag.mesh.position) < 1.8) {
+                            flag.holder = ent;
+                            ent.hasFlag = true;
+                        }
+                    });
+                } else {
+                    flag.mesh.position.copy(flag.holder.mesh.position);
+                    flag.mesh.position.y += 2.8;
+
+                    const baseZoneX = (flag.holder.team === 'red') ? -55 : 55;
+                    if (Math.abs(flag.holder.mesh.position.x - baseZoneX) < 4) {
+                        if (flag.holder.team === 'red') redScore++;
+                        else blueScore++;
+
+                        document.getElementById('redScore').innerText = redScore;
+                        document.getElementById('blueScore').innerText = blueScore;
+
+                        flag.holder.hasFlag = false;
+                        flag.holder = null;
+                        flag.mesh.position.copy(flag.position);
+                    }
+                }
+            });
+
             renderer.render(scene, camera);
         }
+
+        // 滑鼠點擊發射備用
+        window.addEventListener('mousedown', e => {
+            const playerEntity = entities[0];
+            const dir = new THREE.Vector3(Math.sin(cameraAngleY), 0, Math.cos(cameraAngleY));
+            if (e.button === 0) {
+                if (currentWeaponIndex === 0) shootBullet(playerEntity.mesh.position, dir, 'red');
+                else triggerSlashEffect(playerEntity.mesh.position, dir, 'red');
+            } else if (e.button === 2) {
+                digBlock();
+            }
+        });
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
         animate();
 
-        // 視窗縮放適應
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
