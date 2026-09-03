@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flag Wars - Switch 手把完整版</title>
+    <title>Flag Wars - TinkerCAD 方塊人特製版</title>
     <style>
         body {
             margin: 0;
@@ -33,12 +33,12 @@
             bottom: 25px;
             right: 25px;
             background: rgba(0,0,0,0.85);
-            color: #ffaa00;
+            color: #00ffaa;
             padding: 15px 25px;
             border-radius: 8px;
             font-size: 20px;
             font-weight: bold;
-            border: 2px solid #ffaa00;
+            border: 2px solid #00ffaa;
         }
         #controller-status {
             position: absolute;
@@ -75,8 +75,6 @@
             line-height: 1.6;
             border: 1px solid #444;
         }
-        span.red { color: #ff4d4d; font-weight: bold; }
-        span.blue { color: #4da6ff; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -86,26 +84,26 @@
     <div id="ui-container">
         <div class="score-board">
             紅隊分數: <span id="redScore">0</span> | 藍隊分數: <span id="blueScore">0</span><br>
-            狀態: <span id="gameStatus">搶旗戰爭 3v3 激戰中</span>
+            狀態: <span id="gameStatus">TinkerCAD 方塊人搶旗中（子彈無限）</span>
         </div>
     </div>
 
-    <div id="controller-status">手把狀態: <span id="gpState">請按任意手把按鈕連線</span></div>
-    <div id="weapon-hud">當前武器: <span id="currentWeapon">突擊步槍</span></div>
+    <div id="controller-status">手把狀態: <span id="gpState">等待手把連線...</span></div>
+    <div id="weapon-hud">當前武器: <span id="currentWeapon">無限突擊步槍</span></div>
 
     <div id="instructions">
-        <b>Switch Pro 手把操作指南：</b><br>
-        [ 左搖桿 ] 旋轉視角與方向<br>
-        [ 右搖桿 ] 移動 3D Roblox 人偶<br>
-        [ A 按鈕 ] 切換武器 (突擊步槍 ⇄ 砍擊刀光刃)<br>
-        [ 上方板機 (ZR / R) ] 發射子彈 / 釋放砍擊特效<br>
-        [ X 按鈕 / 滑鼠右鍵 ] 挖地板地道（破壞障礙）
+        <b>操作指南：</b><br>
+        [ 左搖桿 / 滑鼠 ] 旋轉視角與四角方向<br>
+        [ 右搖桿上下 / W, S ] 搖桿往前進、往後退<br>
+        [ A 按鈕 / 空白鍵 ] 切換武器 (步槍 ⇄ 砍擊刀光刃)<br>
+        [ 上方板機 ZR / 滑鼠左鍵 ] **無限發射子彈**<br>
+        [ X 按鈕 / 滑鼠右鍵 ] 挖地板地道
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 初始化 3D 遊戲場景 ---
+        // --- 1. 3D 場景初始化 ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f141c);
         scene.fog = new THREE.FogExp2(0x0f141c, 0.012);
@@ -116,7 +114,6 @@
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // 燈光
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
         scene.add(ambientLight);
 
@@ -125,7 +122,7 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 120x120 大型地圖與破壞方塊 (地下戰爭挖地道系統) ---
+        // --- 2. 大型地圖與挖地道系統 ---
         const mapSize = 60;
         const blockSize = 2;
         const blocks = [];
@@ -155,47 +152,81 @@
         }
         createLargeMap();
 
-        // --- Roblox 區塊人偶系統 (方頭、方軀幹、四肢) ---
-        function createRobloxAvatar(teamColor) {
+        // --- 3. 完美對應 TinkerCAD 的方塊組合人偶模型 ---
+        function createTinkerCADAvatar(teamColor) {
             const characterGroup = new THREE.Group();
-            const skinMat = new THREE.MeshLambertMaterial({ color: 0xf3d2bc });
-            const shirtMat = new THREE.MeshLambertMaterial({ color: teamColor });
-            const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1b2838 });
+            
+            // 材質設定
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xd4b08c }); // 膚色圓筒/方頭
+            const shirtMat = new THREE.MeshLambertMaterial({ color: teamColor }); // 紅/藍色上衣
+            const pantsMat = new THREE.MeshLambertMaterial({ color: 0xd93838 }); // 紅色跨步褲
+            const gloveMat = new THREE.MeshLambertMaterial({ color: 0xc49a6c }); // 手套方塊
+            const gunMat = new THREE.MeshLambertMaterial({ color: 0x222222 });  // 槍身黑色
+            const gunAccMat = new THREE.MeshLambertMaterial({ color: 0xd9572b }); // 橘紅色槍托與裝飾
 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
-            head.position.y = 2.2;
+            // 1. 頭部 (圓柱/方塊混合造型)
+            const head = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.7, 12), skinMat);
+            head.position.y = 2.3;
             characterGroup.add(head);
 
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 0.6), shirtMat);
+            // 2. 軀幹
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.2, 0.6), shirtMat);
             torso.position.y = 1.3;
             characterGroup.add(torso);
 
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4), shirtMat);
-            leftArm.position.set(-0.7, 1.3, 0);
+            // 3. 雙臂與拿槍姿勢 (完美對齊您的截圖：雙手向前微曲持槍)
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.1, 0.45), shirtMat);
+            leftArm.position.set(-0.75, 1.3, 0.2);
+            leftArm.rotation.x = -0.4;
             characterGroup.add(leftArm);
 
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4), shirtMat);
-            rightArm.position.set(0.7, 1.3, 0);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.1, 0.45), shirtMat);
+            rightArm.position.set(0.75, 1.3, 0.2);
+            rightArm.rotation.x = -0.4;
             characterGroup.add(rightArm);
 
-            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.2, 0.45), pantsMat);
-            leftLeg.position.set(-0.25, 0.6, 0);
+            // 4. 手套方塊
+            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.46), gloveMat);
+            leftHand.position.set(-0.75, 0.8, 0.5);
+            characterGroup.add(leftHand);
+
+            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.46), gloveMat);
+            rightHand.position.set(0.75, 0.8, 0.5);
+            characterGroup.add(rightHand);
+
+            // 5. 步槍本體 (橫跨雙手之間)
+            const rifleGroup = new THREE.Group();
+            const rifleBody = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 1.8), gunMat);
+            rifleBody.position.set(0, 0.85, 0.3);
+            rifleBody.rotation.y = 0.2;
+            rifleGroup.add(rifleBody);
+
+            const rifleStock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.6), gunAccMat);
+            rifleStock.position.set(0, 0.85, 0.9);
+            rifleGroup.add(rifleStock);
+            characterGroup.add(rifleGroup);
+
+            // 6. 雙腿 (呈跑步前後錯開的方塊結構)
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.48, 1.2, 0.48), pantsMat);
+            leftLeg.position.set(-0.28, 0.5, -0.3);
+            leftLeg.rotation.x = 0.4;
             characterGroup.add(leftLeg);
 
-            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.2, 0.45), pantsMat);
-            rightLeg.position.set(0.25, 0.6, 0);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.48, 1.2, 0.48), pantsMat);
+            rightLeg.position.set(0.28, 0.5, 0.3);
+            rightLeg.rotation.x = -0.4;
             characterGroup.add(rightLeg);
 
-            return { group: characterGroup, parts: { head, torso, leftArm, rightArm, leftLeg, rightLeg } };
+            return { group: characterGroup, parts: { leftLeg, rightLeg } };
         }
 
-        // --- 玩家與 AI 實體類別 (3v3 戰略分組) ---
+        // --- 4. 遊戲實體類別 ---
         class PlayerEntity {
             constructor(isControlled, team, x, z) {
                 this.isControlled = isControlled;
                 this.team = team;
-                this.color = (team === 'red') ? 0xff3b3b : 0x3b82f6;
-                this.avatarData = createRobloxAvatar(this.color);
+                this.color = (team === 'red') ? 0xc73232 : 0x2b6fc7;
+                this.avatarData = createTinkerCADAvatar(this.color);
                 this.mesh = this.avatarData.group;
                 this.mesh.position.set(x, 0, z);
                 scene.add(this.mesh);
@@ -226,21 +257,21 @@
                     }
 
                     const t = Date.now() * 0.01;
-                    this.avatarData.parts.leftArm.rotation.x = Math.sin(t) * 0.5;
-                    this.avatarData.parts.rightArm.rotation.x = -Math.sin(t) * 0.5;
+                    this.avatarData.parts.leftLeg.rotation.x = Math.sin(t) * 0.6;
+                    this.avatarData.parts.rightLeg.rotation.x = -Math.sin(t) * 0.6;
                 }
             }
         }
 
         const entities = [];
-        entities.push(new PlayerEntity(true, 'red', -50, 0));  // 真實玩家
-        entities.push(new PlayerEntity(false, 'red', -48, 8)); // 紅隊 AI 1
-        entities.push(new PlayerEntity(false, 'red', -48, -8)); // 紅隊 AI 2
-        entities.push(new PlayerEntity(false, 'blue', 50, 0)); // 藍隊 AI 1
-        entities.push(new PlayerEntity(false, 'blue', 48, 8)); // 藍隊 AI 2
-        entities.push(new PlayerEntity(false, 'blue', 48, -8)); // 藍隊 AI 3
+        entities.push(new PlayerEntity(true, 'red', -50, 0));  // 玩家
+        entities.push(new PlayerEntity(false, 'red', -48, 8)); // 紅隊 AI
+        entities.push(new PlayerEntity(false, 'red', -48, -8));
+        entities.push(new PlayerEntity(false, 'blue', 50, 0)); // 藍隊 AI
+        entities.push(new PlayerEntity(false, 'blue', 48, 8));
+        entities.push(new PlayerEntity(false, 'blue', 48, -8));
 
-        // --- 旗幟系統 ---
+        // --- 5. 旗幟系統 ---
         const flags = [
             { team: 'red', position: new THREE.Vector3(-55, 0, 0), holder: null, mesh: createFlagMesh(0xff3b3b) },
             { team: 'blue', position: new THREE.Vector3(55, 0, 0), holder: null, mesh: createFlagMesh(0x3b82f6) }
@@ -261,9 +292,9 @@
         }
         flags.forEach(f => f.mesh.position.copy(f.position));
 
-        // --- 武器與特效系統 ---
-        let currentWeaponIndex = 0; // 0: 突擊步槍, 1: 砍擊刀劍
-        const weaponNames = ["突擊步槍", "砍擊刀劍"];
+        // --- 6. 武器與無限子彈系統 ---
+        let currentWeaponIndex = 0;
+        const weaponNames = ["無限突擊步槍", "砍擊刀劍"];
         const bullets = [];
         const slashEffects = [];
 
@@ -291,7 +322,6 @@
             slashEffects.push({ group: slashGroup, dir: dir.clone(), life: 30, team: team });
         }
 
-        // 挖地板破壞障礙函數
         function digBlock() {
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -303,11 +333,11 @@
             }
         }
 
-        // --- 備用鍵盤控制（若無手把時也可遊玩） ---
+        // --- 7. 輸入設定 ---
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
-            if (e.code === 'Space' || e.code === 'KeyC') {
+            if (e.code === 'Space') {
                 currentWeaponIndex = (currentWeaponIndex + 1) % weaponNames.length;
                 document.getElementById('currentWeapon').innerText = weaponNames[currentWeaponIndex];
             }
@@ -318,17 +348,16 @@
         let cameraAngleY = 0, cameraAngleX = 0.35;
         let prevButtonA = false, prevButtonZR = false, prevButtonX = false;
 
-        // --- 遊戲主迴圈 (整合 Gamepad API 支援 Switch Pro 手把) ---
+        // --- 8. 遊戲主迴圈 ---
         let redScore = 0, blueScore = 0;
 
         function animate() {
             requestAnimationFrame(animate);
 
             const player = entities[0];
-            let mx = 0, mz = 0;
+            let moveInput = 0;
             let fireTriggered = false;
 
-            // 讀取 Switch Pro 手把狀態
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
             for (let i = 0; i < gamepads.length; i++) {
@@ -339,15 +368,13 @@
                 document.getElementById('gpState').innerText = "已連線 (Switch Pro)";
                 document.getElementById('gpState').style.color = "#00ff88";
 
-                // 右搖桿：控制移動 (axes[2] 水平, axes[3] 垂直)
-                const moveX = gp.axes[2];
-                const moveZ = gp.axes[3];
-                if (Math.abs(moveX) > 0.15 || Math.abs(moveZ) > 0.15) {
-                    mx = moveX;
-                    mz = moveZ;
+                // 右搖桿垂直 (axes[3])：往前推代表往前，往後拉代表往後
+                const rightStickY = gp.axes[3];
+                if (Math.abs(rightStickY) > 0.15) {
+                    moveInput = -rightStickY; 
                 }
 
-                // 左搖桿：控制視角旋轉 (axes[0] 水平, axes[1] 垂直)
+                // 左搖桿水平 (axes[0])：視角旋轉
                 const lookX = gp.axes[0];
                 const lookY = gp.axes[1];
                 if (Math.abs(lookX) > 0.15) cameraAngleY -= lookX * 0.04;
@@ -356,7 +383,6 @@
                     cameraAngleX = Math.max(0.1, Math.min(1.3, cameraAngleX));
                 }
 
-                // A 按鈕 (通常為 buttons[0])：變換武器
                 const buttonA = gp.buttons[0] && gp.buttons[0].pressed;
                 if (buttonA && !prevButtonA) {
                     currentWeaponIndex = (currentWeaponIndex + 1) % weaponNames.length;
@@ -364,14 +390,10 @@
                 }
                 prevButtonA = buttonA;
 
-                // X 按鈕 (通常為 buttons[2])：挖地板
                 const buttonX = gp.buttons[2] && gp.buttons[2].pressed;
-                if (buttonX && !prevButtonX) {
-                    digBlock();
-                }
+                if (buttonX && !prevButtonX) digBlock();
                 prevButtonX = buttonX;
 
-                // 上方板機 ZR (通常為 buttons[7] 或 buttons[5])：發射攻擊
                 const buttonZR = (gp.buttons[7] && gp.buttons[7].pressed) || (gp.buttons[5] && gp.buttons[5].pressed);
                 if (buttonZR && !prevButtonZR) {
                     fireTriggered = true;
@@ -379,32 +401,24 @@
                 prevButtonZR = buttonZR;
 
             } else {
-                document.getElementById('gpState').innerText = "未偵測到手把 (使用鍵盤 WASD + 滑鼠)";
+                document.getElementById('gpState').innerText = "未偵測到手把 (使用鍵盤 W/S)";
                 document.getElementById('gpState').style.color = "#ffaa00";
 
-                // 備用鍵盤移動
-                if (keys['KeyW']) mz -= 1;
-                if (keys['KeyS']) mz += 1;
-                if (keys['KeyA']) mx -= 1;
-                if (keys['KeyD']) mz += 1; // 修正
+                if (keys['KeyW']) moveInput = 1;
+                if (keys['KeyS']) moveInput = -1;
             }
 
-            // 鍵盤備用射擊 (滑鼠左鍵)
-            // 略 (透過 mousedown 處理)
-
-            // 套用移動
-            if (mx !== 0 || mz !== 0) {
-                const moveAngle = Math.atan2(mx, mz) + cameraAngleY;
-                player.mesh.position.x += Math.sin(moveAngle) * player.speed;
-                player.mesh.position.z += Math.cos(moveAngle) * player.speed;
-                player.mesh.rotation.y = moveAngle;
+            if (moveInput !== 0) {
+                const moveAngle = cameraAngleY;
+                player.mesh.position.x += Math.sin(moveAngle) * (player.speed * moveInput);
+                player.mesh.position.z += Math.cos(moveAngle) * (player.speed * moveInput);
+                player.mesh.rotation.y = moveAngle + (moveInput < 0 ? Math.PI : 0);
 
                 const t = Date.now() * 0.015;
                 player.avatarData.parts.leftLeg.rotation.x = Math.sin(t) * 0.6;
                 player.avatarData.parts.rightLeg.rotation.x = -Math.sin(t) * 0.6;
             }
 
-            // 若手把板機按下或滑鼠觸發攻擊
             if (fireTriggered) {
                 const dir = new THREE.Vector3(Math.sin(cameraAngleY), 0, Math.cos(cameraAngleY));
                 if (currentWeaponIndex === 0) {
@@ -421,7 +435,6 @@
             camera.position.set(cx, cy, cz);
             camera.lookAt(player.mesh.position.x, player.mesh.position.y + 1.5, player.mesh.position.z);
 
-            // AI 更新
             entities.forEach(ent => {
                 if (!ent.isControlled) {
                     const targetFlag = flags.find(f => f.team !== ent.team);
@@ -429,7 +442,6 @@
                 }
             });
 
-            // 子彈移動
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
                 b.mesh.position.addScaledVector(b.dir, 0.8);
@@ -452,7 +464,6 @@
                 }
             }
 
-            // 砍擊特效移動
             for (let i = slashEffects.length - 1; i >= 0; i--) {
                 const s = slashEffects[i];
                 s.group.position.addScaledVector(s.dir, 0.9);
@@ -477,7 +488,6 @@
                 }
             }
 
-            // 搶旗計分
             flags.forEach(flag => {
                 if (!flag.holder) {
                     entities.forEach(ent => {
@@ -508,7 +518,6 @@
             renderer.render(scene, camera);
         }
 
-        // 滑鼠點擊發射備用
         window.addEventListener('mousedown', e => {
             const playerEntity = entities[0];
             const dir = new THREE.Vector3(Math.sin(cameraAngleY), 0, Math.cos(cameraAngleY));
