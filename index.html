@@ -1,733 +1,581 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Super Smash Stickmen - Ultimate Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Roblox 氣息格鬥遊戲 - Switch Pro (ZL/ZR 攻擊)</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: #0f0f1a;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            background-color: #111;
+            font-family: Arial, sans-serif;
+            touch-action: none;
         }
-        #game-container {
-            position: relative;
-            width: 1280px;
-            height: 720px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(138, 43, 226, 0.3);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 3px solid #333;
-        }
-        canvas {
-            display: block;
-            background: linear-gradient(135deg, #1f1c2c 0%, #928DAB 100%);
-        }
-        .ui-overlay {
+        #ui-container {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex;
-            justify-content: space-between;
-            padding: 25px 40px;
-        }
-        .player-hud {
-            display: flex;
-            flex-direction: column;
-            width: 42%;
-        }
-        .player-hud.p2 {
-            align-items: flex-end;
-        }
-        .hud-name {
-            font-size: 22px;
-            font-weight: 900;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
-            margin-bottom: 8px;
-            letter-spacing: 2px;
-        }
-        .p1-color { color: #ff3355; }
-        .p2-color { color: #3388ff; }
-        
-        .health-bar-container {
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 32px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 3px solid #fff;
-            border-radius: 6px;
-            overflow: hidden;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            position: relative;
-        }
-        .health-fill {
             height: 100%;
-            width: 100%;
-            transition: width 0.1s ease-out;
-        }
-        .p1-fill { background: linear-gradient(90deg, #ff1a40, #ff8800); }
-        .p2-fill { background: linear-gradient(90deg, #0055ff, #00ccff); }
-
-        .controls-hint {
-            position: absolute;
-            bottom: 12px;
-            width: 100%;
-            text-align: center;
-            font-size: 13px;
-            color: rgba(255,255,255,0.7);
-            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
             pointer-events: none;
-            letter-spacing: 1px;
-        }
-
-        #win-screen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 20px;
         }
-        #win-screen.active {
-            opacity: 1;
+        .hud-top {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
             pointer-events: auto;
         }
-        #win-text {
-            font-size: 64px;
-            font-weight: 900;
-            margin-bottom: 20px;
-            text-shadow: 0 0 20px rgba(255,255,255,0.8);
-            animation: pulse 1.5s infinite alternate;
+        .health-bar-container {
+            width: 40%;
+            background: rgba(0,0,0,0.5);
+            border: 3px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 25px;
         }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.08); }
+        .health-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            transition: width 0.1s;
         }
-        .btn {
-            background: #ff3355;
-            color: white;
-            border: none;
-            padding: 14px 36px;
-            font-size: 20px;
+        #player2-health {
+            background: linear-gradient(90deg, #1d976c, #93f9b9);
+        }
+        #gamepad-status {
+            text-align: center;
+            color: #00ffff;
+            font-size: 16px;
             font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(255,51,85,0.4);
-            transition: transform 0.1s, background 0.2s;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            margin: 0 auto;
+            pointer-events: auto;
+            text-shadow: 0 0 5px rgba(0,255,255,0.5);
         }
-        .btn:hover { background: #ff1a40; transform: scale(1.05); }
-        .btn:active { transform: scale(0.98); }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            pointer-events: auto;
+            background: rgba(0,0,0,0.7);
+            padding: 30px;
+            border-radius: 15px;
+        }
+        #game-over button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #ff416c;
+            border: none;
+            color: white;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="canvas" width="1280" height="720"></canvas>
-    
-    <div class="ui-overlay">
-        <div class="player-hud p1">
-            <div class="hud-name p1-color">PLAYER 1 (WASD + Space/E/R)</div>
-            <div class="health-bar-container">
-                <div id="p1-health" class="health-fill p1-fill" style="width: 100%;"></div>
-            </div>
+    <div id="ui-container">
+        <div class="hud-top">
+            <div class="health-bar-container"><div id="player1-health" class="health-bar"></div></div>
+            <div class="health-bar-container"><div id="player2-health" class="health-bar"></div></div>
         </div>
-        <div class="player-hud p2">
-            <div class="hud-name p2-color">PLAYER 2 (Gamepad/Arrows + Y/X/A)</div>
-            <div class="health-bar-container">
-                <div id="p2-health" class="health-fill p2-fill" style="width: 100%;"></div>
-            </div>
+        <div style="display: flex; justify-content: center;">
+            <div id="gamepad-status">請按下 Switch Pro 手把任意按鈕以啟動控制器</div>
         </div>
+        <div></div>
     </div>
 
-    <div class="controls-hint">
-        P1: 移動 [W A S D] | 普攻 [空白鍵] | 上鉤拳 [E] | 飛踢 [R] &nbsp;&nbsp;|&nbsp;&nbsp; P2: 左搖桿移動 | 普攻 [X/A鈕] | 上鉤拳 [Y鈕] | 飛踢 [R按鈕] (支援鍵盤方向鍵+數字鍵測試)
+    <div id="game-over">
+        <div id="game-result">YOU WIN!</div>
+        <button onclick="location.reload()">再玩一次</button>
     </div>
 
-    <div id="win-screen">
-        <div id="win-text">PLAYER 1 WINS!</div>
-        <button class="btn" onclick="resetGame()">再玩一次</button>
-    </div>
-</div>
+    <!-- 導入 Three.js 與特效外掛 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 
-<script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+    <script>
+        const ARENA_SIZE = 18;
+        let scene, camera, renderer, composer;
+        let player, enemy;
+        let clock = new THREE.Clock();
+        let isGameOver = false;
 
-// Audio Synthesizer for punchy sound effects without external assets
-const AudioSys = {
-    ctx: null,
-    init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-    },
-    playTone(freq, type, duration, vol=0.1) {
-        try {
-            this.init();
-            if(!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + duration);
-        } catch(e) {}
-    },
-    punch() { this.playTone(150, 'triangle', 0.1, 0.2); },
-    kick() { this.playTone(80, 'square', 0.15, 0.25); },
-    hit() { this.playTone(300, 'sawtooth', 0.1, 0.2); },
-    special() {
-        this.init();
-        if(!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.3);
-    }
-};
+        let gamepadVector = new THREE.Vector2(0, 0);
+        let lastButtonState = {};
+        let gamepadConnected = false;
+        let particles = [];
 
-// Particle System for maximal visual effects
-class ParticleSystem {
-    constructor() {
-        this.particles = [];
-    }
-    emit(x, y, color, count=15, speed=8, life=30) {
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const spd = Math.random() * speed + 2;
-            this.particles.push({
-                x, y,
-                vx: Math.cos(angle) * spd,
-                vy: Math.sin(angle) * spd,
-                color,
-                size: Math.random() * 6 + 3,
-                alpha: 1,
-                decay: 1 / life
-            });
-        }
-    }
-    emitShockwave(x, y, color) {
-        this.particles.push({
-            x, y,
-            radius: 10,
-            maxRadius: 80 + Math.random() * 40,
-            color,
-            alpha: 1,
-            isShockwave: true
-        });
-    }
-    update() {
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
-            if (p.isShockwave) {
-                p.radius += 5;
-                p.alpha -= 0.05;
-                if (p.alpha <= 0) this.particles.splice(i, 1);
-            } else {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.3; // gravity
-                p.alpha -= p.decay;
-                if (p.alpha <= 0) this.particles.splice(i, 1);
-            }
-        }
-    }
-    draw(ctx) {
-        ctx.save();
-        for (let p of this.particles) {
-            ctx.globalAlpha = Math.max(0, p.alpha);
-            if (p.isShockwave) {
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.stroke();
-            } else {
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        ctx.restore();
-    }
-}
+        // --- 建立 Roblox 風格人形角色（兩節式手腳） ---
+        class RobloxCharacter {
+            constructor(color, isAI = false) {
+                this.isAI = isAI;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.isAttacking = false;
+                this.attackType = null;
+                this.attackTime = 0;
+                this.velocity = new THREE.Vector3();
+                this.speed = 0.12;
+                this.hitStun = 0;
 
-const particles = new ParticleSystem();
+                this.container = new THREE.Group();
 
-// Input Handler
-const keys = {};
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    AudioSys.init();
-    if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-});
-window.addEventListener('keyup', e => {
-    keys[e.code] = false;
-});
+                const matBody = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.2 });
+                const matLimbs = new THREE.MeshStandardMaterial({ color: color === 0x0055ff ? 0xcc3333 : 0x223344, roughness: 0.4 });
+                const matHead = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
 
-class Fighter {
-    constructor(x, color, isPlayer1) {
-        this.startX = x;
-        this.color = color;
-        this.isPlayer1 = isPlayer1;
-        this.reset();
-    }
+                this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.6), matBody);
+                this.torso.position.y = 1.75;
+                this.container.add(this.torso);
 
-    reset() {
-        this.x = this.startX;
-        this.y = 500;
-        this.width = 40;
-        this.height = 100;
-        this.vx = 0;
-        this.vy = 0;
-        this.speed = 5;
-        this.jumpForce = -15;
-        this.gravity = 0.8;
-        this.groundY = 560;
-        this.isGrounded = false;
-        this.health = 100;
-        this.facing = this.isPlayer1 ? 1 : -1;
-        
-        this.state = 'idle'; // idle, walk, crouch, jump, attack, hit, knocked_down
-        this.animTimer = 0;
-        this.attackCooldown = 0;
-        this.knockdownTimer = 0;
-        this.hitStunTimer = 0;
-        
-        // Attack hitbox
-        this.hitbox = { x: 0, y: 0, w: 0, h: 0, active: false, damage: 0, kbX: 0, kbY: 0 };
-    }
+                this.head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), matHead);
+                this.head.position.y = 2.75;
+                this.container.add(this.head);
 
-    update(opponent) {
-        if (this.health <= 0) return;
+                const createDoubleLimb = (isArm) => {
+                    const limbGroup = new THREE.Group();
+                    const upperGeom = new THREE.BoxGeometry(isArm ? 0.4 : 0.5, isArm ? 0.7 : 0.8, isArm ? 0.4 : 0.5);
+                    upperGeom.translate(0, isArm ? -0.35 : -0.4, 0);
+                    const upper = new THREE.Mesh(upperGeom, matLimbs);
+                    limbGroup.add(upper);
 
-        // Timers
-        if (this.attackCooldown > 0) this.attackCooldown--;
-        if (this.hitStunTimer > 0) {
-            this.hitStunTimer--;
-            if (this.hitStunTimer === 0 && this.state === 'hit') this.state = 'idle';
-        }
-        if (this.knockdownTimer > 0) {
-            this.knockdownTimer--;
-            this.state = 'knocked_down';
-            if (this.knockdownTimer === 0) {
-                this.state = 'idle';
-                this.vy = -10; // get up bounce
-            }
-            return; // Can't act while knocked down
-        }
+                    const lowerPivot = new THREE.Group();
+                    lowerPivot.position.y = isArm ? -0.7 : -0.8;
+                    const lowerGeom = new THREE.BoxGeometry(isArm ? 0.35 : 0.45, isArm ? 0.7 : 0.8, isArm ? 0.35 : 0.45);
+                    lowerGeom.translate(0, isArm ? -0.35 : -0.4, 0);
+                    const lower = new THREE.Mesh(lowerGeom, matLimbs);
+                    lowerPivot.add(lower);
+                    upper.add(lowerPivot);
 
-        // Handle inputs based on player
-        let moveLeft = false, moveRight = false, jump = false, crouch = false;
-        let punch = false, uppercut = false, kick = false;
+                    return { group: limbGroup, upper: upper, lower: lowerPivot };
+                };
 
-        if (this.isPlayer1) {
-            moveLeft = keys['KeyA'];
-            moveRight = keys['KeyD'];
-            jump = keys['KeyW'];
-            crouch = keys['KeyS'];
-            if (keys['Space'] && this.attackCooldown === 0) punch = true;
-            if (keys['KeyE'] && this.attackCooldown === 0) uppercut = true;
-            if (keys['KeyR'] && this.attackCooldown === 0) kick = true;
-        } else {
-            // Player 2: Support Gamepad API + Arrow Keys / Numpad / IJKL fallback
-            let gp = null;
-            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            for (let g of gamepads) {
-                if (g) { gp = g; break; }
+                this.leftArm = createDoubleLimb(true);
+                this.leftArm.group.position.set(-0.8, 2.3, 0);
+                this.container.add(this.leftArm.group);
+
+                this.rightArm = createDoubleLimb(true);
+                this.rightArm.group.position.set(0.8, 2.3, 0);
+                this.container.add(this.rightArm.group);
+
+                this.leftLeg = createDoubleLimb(false);
+                this.leftLeg.group.position.set(-0.35, 1.0, 0);
+                this.container.add(this.leftLeg.group);
+
+                this.rightLeg = createDoubleLimb(false);
+                this.rightLeg.group.position.set(0.35, 1.0, 0);
+                this.container.add(this.rightLeg.group);
+
+                scene.add(this.container);
             }
 
-            if (gp) {
-                const ax = gp.axes[0];
-                const ay = gp.axes[1];
-                if (ax < -0.4) moveLeft = true;
-                if (ax > 0.4) moveRight = true;
-                if (ay < -0.4 || gp.buttons[12]?.pressed) jump = true;
-                if (ay > 0.4 || gp.buttons[13]?.pressed) crouch = true;
-                
-                // Switch controller mapping according to user prompt:
-                // Y button (index 2) = uppercut, X button (index 3) = flying kick, A button (index 0) = punch
-                if ((gp.buttons[0]?.pressed || gp.buttons[1]?.pressed) && this.attackCooldown === 0) punch = true; // A/B button for punch
-                if (gp.buttons[2]?.pressed && this.attackCooldown === 0) uppercut = true; // Y button for uppercut
-                if (gp.buttons[3]?.pressed && this.attackCooldown === 0) kick = true; // X button for flying kick
-            }
+            update(delta) {
+                if (isGameOver) return;
 
-            // Keyboard fallbacks for P2 testing (Arrow keys + I, O, P)
-            if (keys['ArrowLeft']) moveLeft = true;
-            if (keys['ArrowRight']) moveRight = true;
-            if (keys['ArrowUp']) jump = true;
-            if (keys['ArrowDown']) crouch = true;
-            if (keys['KeyI'] && this.attackCooldown === 0) punch = true;
-            if (keys['KeyO'] && this.attackCooldown === 0) uppercut = true;
-            if (keys['KeyP'] && this.attackCooldown === 0) kick = true;
-        }
+                if (this.hitStun > 0) {
+                    this.hitStun -= delta;
+                    this.container.position.addScaledVector(this.velocity, delta);
+                    this.velocity.multiplyScalar(0.9);
+                    return;
+                }
 
-        // Physics & Movement
-        if (this.state !== 'attack' || this.isGrounded) {
-            if (crouch && this.isGrounded) {
-                this.state = 'crouch';
-                this.vx = 0;
-            } else if (moveLeft) {
-                this.vx = -this.speed;
-                this.facing = -1;
-                if (this.isGrounded && this.state !== 'attack') this.state = 'walk';
-            } else if (moveRight) {
-                this.vx = this.speed;
-                this.facing = 1;
-                if (this.isGrounded && this.state !== 'attack') this.state = 'walk';
-            } else {
-                this.vx = 0;
-                if (this.isGrounded && this.state !== 'attack' && this.state !== 'crouch') {
-                    this.state = 'idle';
+                if (this.isAttacking) {
+                    this.attackTime += delta;
+                    const progress = this.attackTime / 0.4;
+
+                    if (this.attackType === 'punch') {
+                        this.rightArm.upper.rotation.x = -Math.PI / 2 * Math.sin(progress * Math.PI);
+                        this.rightArm.lower.rotation.x = -Math.PI / 3 * Math.sin(progress * Math.PI);
+                    } else if (this.attackType === 'kick') {
+                        this.rightLeg.upper.rotation.x = -Math.PI / 1.2 * Math.sin(progress * Math.PI);
+                        this.rightLeg.lower.rotation.x = Math.PI / 2 * Math.sin(progress * Math.PI);
+                    }
+
+                    if (progress >= 1) {
+                        this.isAttacking = false;
+                        this.attackTime = 0;
+                        this.rightArm.upper.rotation.set(0, 0, 0);
+                        this.rightArm.lower.rotation.set(0, 0, 0);
+                        this.rightLeg.upper.rotation.set(0, 0, 0);
+                        this.rightLeg.lower.rotation.set(0, 0, 0);
+                    }
+                    return;
+                }
+
+                let isMoving = false;
+                if (!this.isAI) {
+                    pollGamepad();
+                    if (gamepadVector.length() > 0.05) {
+                        isMoving = true;
+                        const moveDir = new THREE.Vector3(gamepadVector.x, 0, gamepadVector.y);
+                        this.container.position.addScaledVector(moveDir, this.speed);
+                        
+                        const angle = Math.atan2(moveDir.x, moveDir.z);
+                        this.container.rotation.y = angle;
+                    }
+                } else {
+                    const dirToPlayer = new THREE.Vector3().subVectors(player.container.position, this.container.position);
+                    const dist = dirToPlayer.length();
+
+                    if (dist > 2.2) {
+                        isMoving = true;
+                        dirToPlayer.y = 0;
+                        dirToPlayer.normalize();
+                        this.container.position.addScaledVector(dirToPlayer, this.speed * 0.75);
+                        
+                        const angle = Math.atan2(dirToPlayer.x, dirToPlayer.z);
+                        this.container.rotation.y = angle;
+                    } else {
+                        if (Math.random() < 0.03) {
+                            this.triggerAttack(Math.random() < 0.5 ? 'punch' : 'kick');
+                        }
+                    }
+                }
+
+                if (isMoving) {
+                    const t = clock.getElapsedTime() * 12;
+                    const swing = Math.sin(t) * 0.6;
+                    
+                    this.leftArm.upper.rotation.x = swing;
+                    this.rightArm.upper.rotation.x = -swing;
+                    this.leftLeg.upper.rotation.x = -swing;
+                    this.rightLeg.upper.rotation.x = swing;
+
+                    this.leftArm.lower.rotation.x = -Math.abs(Math.sin(t)) * 0.5;
+                    this.rightArm.lower.rotation.x = -Math.abs(Math.cos(t)) * 0.5;
+                    this.leftLeg.lower.rotation.x = Math.abs(Math.sin(t)) * 0.8;
+                    this.rightLeg.lower.rotation.x = Math.abs(Math.cos(t)) * 0.8;
+                } else {
+                    this.leftArm.upper.rotation.set(0, 0, 0);
+                    this.rightArm.upper.rotation.set(0, 0, 0);
+                    this.leftLeg.upper.rotation.set(0, 0, 0);
+                    this.rightLeg.upper.rotation.set(0, 0, 0);
+                    this.leftArm.lower.rotation.set(0, 0, 0);
+                    this.rightArm.lower.rotation.set(0, 0, 0);
+                    this.leftLeg.lower.rotation.set(0, 0, 0);
+                    this.rightLeg.lower.rotation.set(0, 0, 0);
+                }
+
+                const bound = ARENA_SIZE / 2 - 1.0;
+                let bounced = false;
+                if (Math.abs(this.container.position.x) > bound) {
+                    this.container.position.x = Math.sign(this.container.position.x) * bound;
+                    bounced = true;
+                }
+                if (Math.abs(this.container.position.z) > bound) {
+                    this.container.position.z = Math.sign(this.container.position.z) * bound;
+                    bounced = true;
+                }
+
+                if (bounced) {
+                    createSparks(this.container.position.clone().add(new THREE.Vector3(0, 1, 0)), 0x00ffff);
                 }
             }
 
-            if (jump && this.isGrounded && this.state !== 'crouch') {
-                this.vy = this.jumpForce;
-                this.isGrounded = false;
-                this.state = 'jump';
-                AudioSys.playTone(400, 'sine', 0.1, 0.1);
+            triggerAttack(type) {
+                if (this.isAttacking || this.hitStun > 0) return;
+                this.isAttacking = true;
+                this.attackType = type;
+                this.attackTime = 0;
+
+                const target = this.isAI ? player : enemy;
+                const dist = this.container.position.distanceTo(target.container.position);
+                
+                if (dist < 3.0) {
+                    const damage = type === 'punch' ? 12 : 20;
+                    target.takeDamage(damage, this.container.position);
+                    
+                    const hitPos = target.container.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                    createSparks(hitPos, type === 'kick' ? 0xffaa00 : 0xffffff);
+                    createImpactShockwave(hitPos);
+                }
+            }
+
+            takeDamage(amount, attackerPos) {
+                this.health = Math.max(0, this.health - amount);
+                this.hitStun = 0.3;
+                
+                const knockbackDir = new THREE.Vector3().subVectors(this.container.position, attackerPos).normalize();
+                this.velocity.copy(knockbackDir).multiplyScalar(8);
+                this.velocity.y = 3;
+
+                updateUI();
+
+                if (this.health <= 0) {
+                    triggerGameOver(this.isAI ? "YOU WIN!" : "YOU LOSE!");
+                }
             }
         }
 
-        // Attacks
-        if (punch) {
-            this.executeAttack('punch', 8, 12, 6, -3, 15);
-        } else if (uppercut) {
-            this.executeAttack('uppercut', 22, 20, 8, -18, 30); // 1st skill: Uppercut knocks up & down for 1s (60 frames)
-        } else if (kick) {
-            this.executeAttack('kick', 18, 25, 14, -8, 25); // 2nd skill: Flying kick knocks back & down for 1s
-        }
+        // --- 讀取 Switch Pro 手把狀態 (對應左類比、ZL、ZR) ---
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) {
+                    gp = gamepads[i];
+                    break;
+                }
+            }
 
-        // Apply Gravity
-        this.vy += this.gravity;
-        this.x += this.vx;
-        this.y += this.vy;
+            const statusEl = document.getElementById('gamepad-status');
 
-        // Ground collision
-        if (this.y + this.height >= this.groundY) {
-            this.y = this.groundY - this.height;
-            this.vy = 0;
-            this.isGrounded = true;
-            if (this.state === 'jump') this.state = 'idle';
-        }
+            if (gp) {
+                if (!gamepadConnected) {
+                    gamepadConnected = true;
+                    statusEl.innerText = `已連接手把: ${gp.id}`;
+                    statusEl.style.borderColor = '#00ff00';
+                    statusEl.style.color = '#00ff00';
+                }
 
-        // Screen boundaries
-        if (this.x < 50) this.x = 50;
-        if (this.x + this.width > canvas.width - 50) this.x = canvas.width - 50 - this.width;
+                // 左類比搖桿 (Axis 0, 1)
+                let lx = gp.axes[0];
+                let ly = gp.axes[1];
+                if (Math.abs(lx) < 0.15) lx = 0;
+                if (Math.abs(ly) < 0.15) ly = 0;
+                gamepadVector.set(lx, ly);
 
-        // Animation timer
-        this.animTimer += 0.15;
+                // Switch Pro 控制器標準 API 的肩鍵編號通常為：
+                // L = 4, R = 5, ZL = 6, ZR = 7 (亦有些系統會透過按鈕 6/7 或類比軸判斷)
+                // 這裡同時對應按鈕 6、7 (ZL/ZR 數位按下) 以及軸/按鈕相容判定
+                const isPressed = (index) => gp.buttons[index] && (gp.buttons[index].pressed || gp.buttons[index].value > 0.5);
 
-        // Hitbox collision check with opponent
-        if (this.hitbox.active) {
-            // Check collision with opponent hurtbox
-            const opBox = { x: opponent.x, y: opponent.y, w: opponent.width, h: opponent.height };
-            if (this.isColliding(this.hitbox, opBox)) {
-                this.hitbox.active = false; // hit once per attack
-                opponent.takeDamage(this.hitbox.damage, this.hitbox.kbX * this.facing, this.hitbox.kbY, this.hitbox.knockdown);
+                // ZL 鍵 (通常是 index 6 或按鈕 4 視驅動而定，標準 Web API 為 6)
+                let pressZL = isPressed(6) || isPressed(4);
+                // ZR 鍵 (通常是 index 7 或按鈕 5 視驅動而定，標準 Web API 為 7)
+                let pressZR = isPressed(7) || isPressed(5);
+
+                if (pressZL && !lastButtonState['ZL']) {
+                    player.triggerAttack('punch'); // ZL 鍵揮拳
+                }
+                if (pressZR && !lastButtonState['ZR']) {
+                    player.triggerAttack('kick');  // ZR 鍵飛踢
+                }
+
+                lastButtonState['ZL'] = pressZL;
+                lastButtonState['ZR'] = pressZR;
+
+            } else {
+                gamepadConnected = false;
+                statusEl.innerText = "請按下 Switch Pro 手把任意按鈕以啟動控制器";
+                statusEl.style.borderColor = 'rgba(0, 255, 255, 0.4)';
+                statusEl.style.color = '#00ffff';
+                gamepadVector.set(0, 0);
             }
         }
-    }
 
-    executeAttack(type, damage, range, kbX, kbY, cooldown) {
-        this.state = 'attack';
-        this.attackCooldown = cooldown;
-        this.animTimer = 0;
-        
-        let isKnockdown = (type === 'uppercut' || type === 'kick');
-        
-        this.hitbox = {
-            x: this.facing === 1 ? this.x + this.width : this.x - range - 10,
-            y: type === 'uppercut' ? this.y - 20 : this.y + 10,
-            w: range + 10,
-            h: type === 'uppercut' ? 80 : 50,
-            active: true,
-            damage: damage,
-            kbX: kbX,
-            kbY: kbY,
-            knockdown: isKnockdown
-        };
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.FogExp2(0x050510, 0.025);
 
-        if (type === 'punch') {
-            AudioSys.punch();
-            particles.emit(this.hitbox.x + this.hitbox.w/2, this.hitbox.y + 25, '#fff', 8, 5, 15);
-        } else if (type === 'uppercut') {
-            AudioSys.special();
-            particles.emitShockwave(this.x + (this.facing*30), this.y + 50, '#ffaa00');
-            particles.emit(this.x + (this.facing*40), this.y, '#ff3300', 20, 10, 25);
-        } else if (type === 'kick') {
-            AudioSys.kick();
-            this.vx = this.facing * 12; // rush forward for flying kick
-            particles.emitShockwave(this.x + (this.facing*40), this.y + 40, '#00ffff');
-            particles.emit(this.x + (this.facing*50), this.y + 30, '#00ccff', 25, 12, 30);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 12, 16);
+            camera.lookAt(0, 2, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.body.appendChild(renderer.domElement);
+
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.5, 0.4, 0.85
+            );
+
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            const neonLight1 = new THREE.PointLight(0x00ffff, 3, 30);
+            neonLight1.position.set(-8, 5, -8);
+            scene.add(neonLight1);
+
+            const neonLight2 = new THREE.PointLight(0xff00ff, 3, 30);
+            neonLight2.position.set(8, 5, 8);
+            scene.add(neonLight2);
+
+            createArena();
+
+            player = new RobloxCharacter(0x0055ff, false);
+            player.container.position.set(0, 0, 5);
+
+            enemy = new RobloxCharacter(0xff2222, true);
+            enemy.container.position.set(0, 0, -5);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
         }
 
-        // Disable hitbox after 12 frames
-        setTimeout(() => {
-            this.hitbox.active = false;
-            if (this.state === 'attack') this.state = 'idle';
-        }, 200);
-    }
+        function createArena() {
+            const floorGeo = new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x151525, roughness: 0.2, metalness: 0.8 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
 
-    isColliding(b1, b2) {
-        return b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y;
-    }
+            const gridHelper = new THREE.GridHelper(ARENA_SIZE, 18, 0x00ffff, 0x333355);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
 
-    takeDamage(dmg, kbX, kbY, isKnockdown) {
-        this.health = Math.max(0, this.health - dmg);
-        AudioSys.hit();
-        particles.emit(this.x + this.width/2, this.y + this.height/2, '#ff0055', 25, 10, 25);
-        
-        this.vx = kbX;
-        this.vy = kbY;
-        this.isGrounded = false;
+            const wallHeight = 2.5;
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.4,
+                roughness: 0.1
+            });
 
-        if (isKnockdown) {
-            this.state = 'knocked_down';
-            this.knockdownTimer = 60; // exactly 1 second (60 fps)
-            particles.emitShockwave(this.x + this.width/2, this.groundY, '#ffffff');
-        } else {
-            this.state = 'hit';
-            this.hitStunTimer = 15;
+            const half = ARENA_SIZE / 2;
+            const wGeo = new THREE.BoxGeometry(ARENA_SIZE, wallHeight, 0.4);
+
+            const wall1 = new THREE.Mesh(wGeo, wallMat);
+            wall1.position.set(0, wallHeight / 2, -half);
+            scene.add(wall1);
+
+            const wall2 = new THREE.Mesh(wGeo, wallMat);
+            wall2.position.set(0, wallHeight / 2, half);
+            scene.add(wall2);
+
+            const wGeoSide = new THREE.BoxGeometry(0.4, wallHeight, ARENA_SIZE);
+            const wall3 = new THREE.Mesh(wGeoSide, wallMat);
+            wall3.position.set(-half, wallHeight / 2, 0);
+            scene.add(wall3);
+
+            const wall4 = new THREE.Mesh(wGeoSide, wallMat);
+            wall4.position.set(half, wallHeight / 2, 0);
+            scene.add(wall4);
         }
 
-        updateUI();
-        checkWinCondition();
-    }
+        function createSparks(pos, colorHex) {
+            const pCount = 20;
+            const geom = new THREE.BufferGeometry();
+            const positions = [];
+            const velocities = [];
 
-    draw(ctx) {
-        ctx.save();
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+            for (let i = 0; i < pCount; i++) {
+                positions.push(pos.x, pos.y, pos.z);
+                velocities.push((Math.random() - 0.5) * 8, Math.random() * 8, (Math.random() - 0.5) * 8);
+            }
 
-        let cx = this.x + this.width / 2;
-        let cy = this.y;
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ color: colorHex, size: 0.3, transparent: true, blending: THREE.AdditiveBlending });
+            const pSystem = new THREE.Points(geom, mat);
+            scene.add(pSystem);
 
-        if (this.state === 'knocked_down') {
-            // Knocked down on the ground flat
-            ctx.save();
-            ctx.translate(cx, this.groundY - 15);
-            ctx.rotate(this.facing * Math.PI / 2);
-            // Stickman body horizontal
-            ctx.beginPath();
-            ctx.moveTo(-20, 0); ctx.lineTo(20, 0); // body
-            ctx.arc(0, -25, 14, 0, Math.PI * 2); // head
-            ctx.stroke();
-            // Stars spinning above head
-            ctx.fillStyle = '#ffcc00';
-            let starAngle = Date.now() * 0.01;
-            ctx.beginPath();
-            ctx.arc(Math.cos(starAngle) * 25, -45 + Math.sin(starAngle)*5, 4, 0, Math.PI*2);
-            ctx.arc(Math.cos(starAngle + Math.PI) * 25, -45 + Math.sin(starAngle+Math.PI)*5, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.restore();
-            ctx.restore();
-            return;
+            particles.push({ mesh: pSystem, vel: velocities, life: 0.4 });
         }
 
-        let headRadius = 14;
-        let bodyLength = 40;
-        let legLength = 40;
-        let armLength = 35;
+        function createImpactShockwave(pos) {
+            const ringGeo = new THREE.RingGeometry(0.1, 0.8, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.copy(pos);
+            ring.rotation.x = Math.PI / 2;
+            scene.add(ring);
 
-        let headX = cx;
-        let headY = cy + headRadius;
-        let neckX = headX;
-        let neckY = headY + headRadius;
-        let hipX = neckX;
-        let hipY = neckY + bodyLength;
-
-        if (this.state === 'crouch') {
-            hipY -= 25;
-            bodyLength -= 25;
-            headY += 25;
-            neckY += 25;
+            particles.push({ isRing: true, mesh: ring, life: 0.3 });
         }
 
-        // Draw Head
-        ctx.fillStyle = '#222';
-        ctx.beginPath();
-        ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Draw Body
-        ctx.beginPath();
-        ctx.moveTo(neckX, neckY);
-        ctx.lineTo(hipX, hipY);
-        ctx.stroke();
-
-        // Limbs animation based on state
-        let leftLegX = hipX - 15, leftLegY = hipY + legLength;
-        let rightLegX = hipX + 15, rightLegY = hipY + legLength;
-        let leftArmX = neckX - 20, leftArmY = neckY + armLength;
-        let rightArmX = neckX + 20, rightArmY = neckY + armLength;
-
-        if (this.state === 'walk') {
-            let swing = Math.sin(this.animTimer * 2) * 20;
-            leftLegX += swing;
-            rightLegX -= swing;
-            leftArmX -= swing * 0.8;
-            rightArmX += swing * 0.8;
-        } else if (this.state === 'jump') {
-            leftLegX -= 10; rightLegX += 10;
-            leftLegY -= 15; rightLegY -= 15;
-        } else if (this.state === 'attack') {
-            rightArmX += this.facing * 35;
-            rightArmY -= 10;
-        } else if (this.state === 'hit') {
-            headX -= this.facing * 10;
-            hipX -= this.facing * 5;
+        function updateUI() {
+            document.getElementById('player1-health').style.width = (player.health / player.maxHealth * 100) + '%';
+            document.getElementById('player2-health').style.width = (enemy.health / enemy.maxHealth * 100) + '%';
         }
 
-        // Legs
-        ctx.beginPath();
-        ctx.moveTo(hipX, hipY);
-        ctx.lineTo(hipX - 10, hipY + legLength / 2);
-        ctx.lineTo(leftLegX, leftLegY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(hipX, hipY);
-        ctx.lineTo(hipX + 10, hipY + legLength / 2);
-        ctx.lineTo(rightLegX, rightLegY);
-        ctx.stroke();
-
-        // Arms
-        ctx.beginPath();
-        ctx.moveTo(neckX, neckY + 10);
-        ctx.lineTo(leftArmX, leftArmY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(neckX, neckY + 10);
-        ctx.lineTo(rightArmX, rightArmY);
-        ctx.stroke();
-
-        // Directional eye indicator
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(headX + (this.facing * 5), headY - 2, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-    }
-}
-
-let p1 = new Fighter(300, '#ff3355', true);
-let p2 = new Fighter(940, '#3388ff', false);
-
-function updateUI() {
-    document.getElementById('p1-health').style.width = p1.health + '%';
-    document.getElementById('p2-health').style.width = p2.health + '%';
-}
-
-function checkWinCondition() {
-    if (p1.health <= 0 || p2.health <= 0) {
-        const winScreen = document.getElementById('win-screen');
-        const winText = document.getElementById('win-text');
-        if (p1.health <= 0 && p2.health <= 0) {
-            winText.innerText = "DRAW!";
-            winText.style.color = "#ffcc00";
-        } else if (p1.health <= 0) {
-            winText.innerText = "PLAYER 2 WINS!";
-            winText.style.color = "#3388ff";
-        } else {
-            winText.innerText = "PLAYER 1 WINS!";
-            winText.style.color = "#ff3355";
+        function triggerGameOver(resultText) {
+            isGameOver = true;
+            document.getElementById('game-result').innerText = resultText;
+            document.getElementById('game-over').style.display = 'block';
         }
-        winScreen.classList.add('active');
-    }
-}
 
-function resetGame() {
-    p1.reset();
-    p2.reset();
-    document.getElementById('win-screen').classList.remove('active');
-    updateUI();
-}
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-// Background stage drawing
-function drawStage() {
-    // Sky gradient background
-    let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#110d2b');
-    grad.addColorStop(0.5, '#2b1b4e');
-    grad.addColorStop(1, '#151026');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function animate() {
+            requestAnimationFrame(animate);
 
-    // Neon stage platform (Smash Bros style floating arena)
-    ctx.shadowBlur = 25;
-    ctx.shadowColor = '#8a2be2';
-    ctx.fillStyle = '#1c1630';
-    ctx.strokeStyle = '#a259ff';
-    ctx.lineWidth = 4;
-    
-    ctx.beginPath();
-    ctx.roundRect(100, 560, 1080, 120, [20, 20, 0, 0]);
-    ctx.fill();
-    ctx.stroke();
+            const delta = clock.getDelta();
 
-    // Stage grid lines for futuristic effect
-    ctx.strokeStyle = 'rgba(162, 89, 255, 0.2)';
-    ctx.lineWidth = 1;
-    for (let i = 150; i < 1180; i += 60) {
-        ctx.beginPath();
-        ctx.moveTo(i, 560);
-        ctx.lineTo(i - 30, 680);
-        ctx.stroke();
-    }
-    ctx.shadowBlur = 0; // reset
-}
+            player.update(delta);
+            enemy.update(delta);
 
-// Game Loop
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.life -= delta;
 
-    // Update
-    p1.update(p2);
-    p2.update(p1);
-    particles.update();
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                } else {
+                    if (p.isRing) {
+                        p.mesh.scale.addScalar(delta * 8);
+                        p.mesh.material.opacity = p.life * 3;
+                    } else {
+                        const posArr = p.mesh.geometry.attributes.position.array;
+                        for (let j = 0; j < p.vel.length / 3; j++) {
+                            posArr[j * 3] += p.vel[j * 3] * delta;
+                            posArr[j * 3 + 1] += p.vel[j * 3 + 1] * delta;
+                            posArr[j * 3 + 2] += p.vel[j * 3 + 2] * delta;
+                            p.vel[j * 3 + 1] -= 9.8 * delta;
+                        }
+                        p.mesh.geometry.attributes.position.needsUpdate = true;
+                        p.material.opacity = p.life * 2.5;
+                    }
+                }
+            }
 
-    // Render
-    drawStage();
-    particles.draw(ctx);
-    p1.draw(ctx);
-    p2.draw(ctx);
+            const centerPos = new THREE.Vector3()
+                .addVectors(player.container.position, enemy.container.position)
+                .multiplyScalar(0.5);
+            
+            camera.position.x += (centerPos.x - camera.position.x) * 0.05;
+            camera.position.z += (centerPos.z + 14 - camera.position.z) * 0.05;
+            camera.lookAt(centerPos.x, 2, centerPos.z);
 
-    requestAnimationFrame(gameLoop);
-}
+            composer.render();
+        }
 
-// Initialize and start
-updateUI();
-gameLoop();
-</script>
-
+        init();
+    </script>
 </body>
 </html>
