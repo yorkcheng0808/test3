@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Roblox 氣息格鬥遊戲 - Switch Pro (ZL/ZR 攻擊)</title>
+    <title>3D Roblox 氣息格鬥遊戲 - Switch Pro 完整版</title>
     <style>
         body {
             margin: 0;
@@ -129,7 +129,7 @@
         let gamepadConnected = false;
         let particles = [];
 
-        // --- 建立 Roblox 風格人形角色（兩節式手腳） ---
+        // --- 建立 Roblox 風格人形角色 ---
         class RobloxCharacter {
             constructor(color, isAI = false) {
                 this.isAI = isAI;
@@ -138,6 +138,7 @@
                 this.isAttacking = false;
                 this.attackType = null;
                 this.attackTime = 0;
+                this.isBlocking = false;
                 this.velocity = new THREE.Vector3();
                 this.speed = 0.12;
                 this.hitStun = 0;
@@ -203,25 +204,29 @@
                     return;
                 }
 
+                // 攻擊動作處理
                 if (this.isAttacking) {
                     this.attackTime += delta;
                     const progress = this.attackTime / 0.4;
 
                     if (this.attackType === 'punch') {
+                        // 普通拳：右臂向前揮出
                         this.rightArm.upper.rotation.x = -Math.PI / 2 * Math.sin(progress * Math.PI);
                         this.rightArm.lower.rotation.x = -Math.PI / 3 * Math.sin(progress * Math.PI);
                     } else if (this.attackType === 'kick') {
+                        // 飛踢：往前跳衝刺與踢擊
                         this.rightLeg.upper.rotation.x = -Math.PI / 1.2 * Math.sin(progress * Math.PI);
                         this.rightLeg.lower.rotation.x = Math.PI / 2 * Math.sin(progress * Math.PI);
+                        
+                        // 往前跳躍位移
+                        const forwardDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.container.rotation.y);
+                        this.container.position.addScaledVector(forwardDir, 0.15);
                     }
 
                     if (progress >= 1) {
                         this.isAttacking = false;
                         this.attackTime = 0;
-                        this.rightArm.upper.rotation.set(0, 0, 0);
-                        this.rightArm.lower.rotation.set(0, 0, 0);
-                        this.rightLeg.upper.rotation.set(0, 0, 0);
-                        this.rightLeg.lower.rotation.set(0, 0, 0);
+                        this.resetPose();
                     }
                     return;
                 }
@@ -238,6 +243,7 @@
                         this.container.rotation.y = angle;
                     }
                 } else {
+                    // 電腦 AI 行為
                     const dirToPlayer = new THREE.Vector3().subVectors(player.container.position, this.container.position);
                     const dist = dirToPlayer.length();
 
@@ -256,6 +262,7 @@
                     }
                 }
 
+                // 移動走路動畫 vs 靜止拳擊初始預備動作
                 if (isMoving) {
                     const t = clock.getElapsedTime() * 12;
                     const swing = Math.sin(t) * 0.6;
@@ -269,25 +276,38 @@
                     this.rightArm.lower.rotation.x = -Math.abs(Math.cos(t)) * 0.5;
                     this.leftLeg.lower.rotation.x = Math.abs(Math.sin(t)) * 0.8;
                     this.rightLeg.lower.rotation.x = Math.abs(Math.cos(t)) * 0.8;
-                } else {
-                    this.leftArm.upper.rotation.set(0, 0, 0);
-                    this.rightArm.upper.rotation.set(0, 0, 0);
+                } else if (this.isBlocking) {
+                    // 防禦姿態（雙手交叉護在胸前）
+                    this.leftArm.upper.rotation.set(-Math.PI / 3, 0, Math.PI / 6);
+                    this.rightArm.upper.rotation.set(-Math.PI / 3, 0, -Math.PI / 6);
+                    this.leftArm.lower.rotation.set(-Math.PI / 2, 0, 0);
+                    this.rightArm.lower.rotation.set(-Math.PI / 2, 0, 0);
                     this.leftLeg.upper.rotation.set(0, 0, 0);
                     this.rightLeg.upper.rotation.set(0, 0, 0);
-                    this.leftArm.lower.rotation.set(0, 0, 0);
-                    this.rightArm.lower.rotation.set(0, 0, 0);
+                } else {
+                    // 靜止不動時：拳擊初始預備動作（雙手舉起護臉）
+                    this.leftArm.upper.rotation.set(-Math.PI / 4, 0, 0.2);
+                    this.rightArm.upper.rotation.set(-Math.PI / 4, 0, -0.2);
+                    this.leftArm.lower.rotation.set(-Math.PI / 2, 0, 0);
+                    this.rightArm.lower.rotation.set(-Math.PI / 2, 0, 0);
+                    this.leftLeg.upper.rotation.set(0, 0, 0);
+                    this.rightLeg.upper.rotation.set(0, 0, 0);
                     this.leftLeg.lower.rotation.set(0, 0, 0);
                     this.rightLeg.lower.rotation.set(0, 0, 0);
                 }
 
+                // 擂台邊界碰撞與反彈機制
                 const bound = ARENA_SIZE / 2 - 1.0;
                 let bounced = false;
                 if (Math.abs(this.container.position.x) > bound) {
                     this.container.position.x = Math.sign(this.container.position.x) * bound;
+                    // 反彈推力
+                    this.velocity.set(-Math.sign(this.container.position.x) * 6, 0, 0);
                     bounced = true;
                 }
                 if (Math.abs(this.container.position.z) > bound) {
                     this.container.position.z = Math.sign(this.container.position.z) * bound;
+                    this.velocity.set(0, 0, -Math.sign(this.container.position.z) * 6);
                     bounced = true;
                 }
 
@@ -296,8 +316,19 @@
                 }
             }
 
+            resetPose() {
+                this.leftArm.upper.rotation.set(0, 0, 0);
+                this.rightArm.upper.rotation.set(0, 0, 0);
+                this.leftLeg.upper.rotation.set(0, 0, 0);
+                this.rightLeg.upper.rotation.set(0, 0, 0);
+                this.leftArm.lower.rotation.set(0, 0, 0);
+                this.rightArm.lower.rotation.set(0, 0, 0);
+                this.leftLeg.lower.rotation.set(0, 0, 0);
+                this.rightLeg.lower.rotation.set(0, 0, 0);
+            }
+
             triggerAttack(type) {
-                if (this.isAttacking || this.hitStun > 0) return;
+                if (this.isAttacking || this.hitStun > 0 || this.isBlocking) return;
                 this.isAttacking = true;
                 this.attackType = type;
                 this.attackTime = 0;
@@ -305,12 +336,15 @@
                 const target = this.isAI ? player : enemy;
                 const dist = this.container.position.distanceTo(target.container.position);
                 
-                if (dist < 3.0) {
-                    const damage = type === 'punch' ? 12 : 20;
+                if (dist < 3.5) {
+                    let damage = type === 'punch' ? 12 : 20;
+                    if (target.isBlocking) {
+                        damage = Math.floor(damage * 0.2); // 格擋成功減傷 80%
+                    }
                     target.takeDamage(damage, this.container.position);
                     
                     const hitPos = target.container.position.clone().add(new THREE.Vector3(0, 1.5, 0));
-                    createSparks(hitPos, type === 'kick' ? 0xffaa00 : 0xffffff);
+                    createSparks(hitPos, target.isBlocking ? 0x00aaff : (type === 'kick' ? 0xffaa00 : 0xffffff));
                     createImpactShockwave(hitPos);
                 }
             }
@@ -331,7 +365,7 @@
             }
         }
 
-        // --- 讀取 Switch Pro 手把狀態 (對應左類比、ZL、ZR) ---
+        // --- 讀取 Switch Pro 手把狀態 (左類比、ZL、ZR、L格擋) ---
         function pollGamepad() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
@@ -359,21 +393,20 @@
                 if (Math.abs(ly) < 0.15) ly = 0;
                 gamepadVector.set(lx, ly);
 
-                // Switch Pro 控制器標準 API 的肩鍵編號通常為：
-                // L = 4, R = 5, ZL = 6, ZR = 7 (亦有些系統會透過按鈕 6/7 或類比軸判斷)
-                // 這裡同時對應按鈕 6、7 (ZL/ZR 數位按下) 以及軸/按鈕相容判定
                 const isPressed = (index) => gp.buttons[index] && (gp.buttons[index].pressed || gp.buttons[index].value > 0.5);
 
-                // ZL 鍵 (通常是 index 6 或按鈕 4 視驅動而定，標準 Web API 為 6)
+                // 按鈕對應：ZL(6或4), ZR(7或5), L肩鍵(4或6)
                 let pressZL = isPressed(6) || isPressed(4);
-                // ZR 鍵 (通常是 index 7 或按鈕 5 視驅動而定，標準 Web API 為 7)
                 let pressZR = isPressed(7) || isPressed(5);
+                let pressL  = isPressed(4) || isPressed(6); // L 格擋鍵
+
+                player.isBlocking = pressL;
 
                 if (pressZL && !lastButtonState['ZL']) {
-                    player.triggerAttack('punch'); // ZL 鍵揮拳
+                    player.triggerAttack('punch'); // ZL 揮拳
                 }
                 if (pressZR && !lastButtonState['ZR']) {
-                    player.triggerAttack('kick');  // ZR 鍵飛踢
+                    player.triggerAttack('kick');  // ZR 飛踢（往前跳）
                 }
 
                 lastButtonState['ZL'] = pressZL;
