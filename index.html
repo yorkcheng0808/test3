@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Roblox 終極格鬥遊戲 - 拳擊裝備與動態雙線擂台</title>
+    <title>3D 終極格鬥遊戲 - 彈力繩擂台與高智商 AI</title>
     <style>
         body {
             margin: 0;
@@ -128,7 +128,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 
     <script>
-        const ARENA_SIZE = 18;
+        const ARENA_SIZE = 16;
         let scene, camera, renderer, composer;
         let player, enemy;
         let clock = new THREE.Clock();
@@ -138,9 +138,9 @@
         let lastButtonState = {};
         let gamepadConnected = false;
         let particles = [];
-        let dynamicWalls = [];
+        let ringRopes = []; // 用來儲存擂台彈力繩物件
 
-        // --- 精緻 Roblox 風格角色 (配備拳擊手套 🥊) ---
+        // --- Roblox 風格角色 (配備拳擊手套 🥊) ---
         class RobloxCharacter {
             constructor(color, isAI = false) {
                 this.isAI = isAI;
@@ -153,26 +153,26 @@
                 this.isDead = false;
                 this.velocity = new THREE.Vector3();
                 this.speed = 0.13;
+                
+                // AI 專用高智商策略計時器
+                this.aiDecisionTimer = 0;
+                this.aiActionState = 'idle';
 
                 this.container = new THREE.Group();
 
                 const matBody = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.4 });
                 const matLimbs = new THREE.MeshStandardMaterial({ color: color === 0x0055ff ? 0x223366 : 0x552222, roughness: 0.4 });
                 const matHead = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.3 });
-                // 拳擊手套材質 (亮眼紅色/金色發光質感)
                 const matGlove = new THREE.MeshStandardMaterial({ color: 0xff2222, roughness: 0.1, metalness: 0.6, emissive: 0x330000 });
 
-                // 身體
                 this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.6), matBody);
                 this.torso.position.y = 1.75;
                 this.container.add(this.torso);
 
-                // 頭部
                 this.head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), matHead);
                 this.head.position.y = 2.75;
                 this.container.add(this.head);
 
-                // 雙眼細節
                 const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
                 const eyeGeo = new THREE.BoxGeometry(0.15, 0.15, 0.1);
                 const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -208,7 +208,6 @@
                 this.rightArm.group.position.set(0.8, 2.3, 0);
                 this.container.add(this.rightArm.group);
 
-                // 為雙手裝上精緻的拳擊手套 🥊
                 this.gloveLeft = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.6), matGlove);
                 this.gloveLeft.position.set(0, -0.7, 0);
                 this.leftArm.lower.add(this.gloveLeft);
@@ -231,7 +230,6 @@
             update(delta) {
                 if (isGameOver) return;
 
-                // 若角色死亡，執行倒地動畫並鎖定行為
                 if (this.isDead) {
                     if (this.container.rotation.x > -Math.PI / 2) {
                         this.container.rotation.x -= delta * 4;
@@ -240,23 +238,21 @@
                     return;
                 }
 
-                // 擊飛滑行機制（無卡頓，順暢物理慣性）
+                // 滑行物理慣性
                 if (this.velocity.lengthSq() > 0.001) {
                     this.container.position.addScaledVector(this.velocity, delta);
                     this.velocity.multiplyScalar(0.92);
                 }
 
-                // 攻擊動作處理
+                // 攻擊動畫處理
                 if (this.isAttacking) {
                     this.attackTime += delta;
                     const progress = this.attackTime / 0.4;
 
                     if (this.attackType === 'punch') {
-                        // 戴著拳擊手套的直拳：右臂直直向前轟出
                         this.rightArm.upper.rotation.set(-Math.PI / 2, 0, 0);
                         this.rightArm.lower.rotation.set(0, 0, 0);
                     } else if (this.attackType === 'kick') {
-                        // 飛踢：往前跳衝刺與踢擊
                         this.rightLeg.upper.rotation.x = -Math.PI / 1.2 * Math.sin(progress * Math.PI);
                         this.rightLeg.lower.rotation.x = Math.PI / 2 * Math.sin(progress * Math.PI);
                         
@@ -284,26 +280,53 @@
                         this.container.rotation.y = angle;
                     }
                 } else {
-                    // 智慧 AI 追擊
+                    // --- 高智商聰明 AI 戰術系統 ---
+                    this.aiDecisionTimer -= delta;
                     const dirToPlayer = new THREE.Vector3().subVectors(player.container.position, this.container.position);
                     const dist = dirToPlayer.length();
 
-                    if (!player.isDead && dist > 2.2) {
-                        isMoving = true;
-                        dirToPlayer.y = 0;
-                        dirToPlayer.normalize();
-                        this.container.position.addScaledVector(dirToPlayer, this.speed * 0.75);
+                    if (this.aiDecisionTimer <= 0) {
+                        this.aiDecisionTimer = 0.4 + Math.random() * 0.6; // 每隔一段時間重新評估戰術
                         
+                        if (player.isAttacking && dist < 3.5) {
+                            // 玩家正在攻擊：高智商 AI 有 70% 機率開啟防禦
+                            this.isBlocking = Math.random() < 0.7;
+                            this.aiActionState = 'block';
+                        } else if (dist > 3.5) {
+                            // 距離太遠：積極追擊
+                            this.isBlocking = false;
+                            this.aiActionState = 'chase';
+                        } else {
+                            // 距離剛好：發動攻擊或小範圍走位
+                            this.isBlocking = false;
+                            if (Math.random() < 0.65) {
+                                this.triggerAttack(Math.random() < 0.5 ? 'punch' : 'kick');
+                                this.aiActionState = 'attack';
+                            } else {
+                                this.aiActionState = 'strafe';
+                            }
+                        }
+                    }
+
+                    if (!player.isDead) {
+                        dirToPlayer.y = 0;
                         const angle = Math.atan2(dirToPlayer.x, dirToPlayer.z);
                         this.container.rotation.y = angle;
-                    } else if (!player.isDead) {
-                        if (Math.random() < 0.03) {
-                            this.triggerAttack(Math.random() < 0.5 ? 'punch' : 'kick');
+
+                        if (this.aiActionState === 'chase' && dist > 2.2) {
+                            isMoving = true;
+                            dirToPlayer.normalize();
+                            this.container.position.addScaledVector(dirToPlayer, this.speed * 0.85);
+                        } else if (this.aiActionState === 'strafe') {
+                            isMoving = true;
+                            // 繞圈環繞走位
+                            const strafeDir = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize();
+                            this.container.position.addScaledVector(strafeDir, this.speed * 0.6);
                         }
                     }
                 }
 
-                // 行走動畫 vs 拳擊初始預備動作
+                // 動態步態動畫
                 if (isMoving) {
                     const t = clock.getElapsedTime() * 12;
                     const swing = Math.sin(t) * 0.6;
@@ -318,7 +341,6 @@
                     this.leftLeg.lower.rotation.x = Math.abs(Math.sin(t)) * 0.8;
                     this.rightLeg.lower.rotation.x = Math.abs(Math.cos(t)) * 0.8;
                 } else if (this.isBlocking) {
-                    // 防禦姿態（戴手套護頭）
                     this.leftArm.upper.rotation.set(-Math.PI / 3, 0, Math.PI / 6);
                     this.rightArm.upper.rotation.set(-Math.PI / 3, 0, -Math.PI / 6);
                     this.leftArm.lower.rotation.set(-Math.PI / 1.5, 0, 0);
@@ -326,7 +348,6 @@
                     this.leftLeg.upper.rotation.set(0, 0, 0);
                     this.rightLeg.upper.rotation.set(0, 0, 0);
                 } else {
-                    // 靜止不動時：標準拳擊初始預備動作（雙手握拳舉起護面）
                     this.leftArm.upper.rotation.set(-Math.PI / 3, 0.2, 0.2);
                     this.rightArm.upper.rotation.set(-Math.PI / 3, -0.2, -0.2);
                     this.leftArm.lower.rotation.set(-Math.PI / 1.5, 0, 0);
@@ -337,22 +358,34 @@
                     this.rightLeg.lower.rotation.set(0, 0, 0);
                 }
 
-                // 撞擊雙線動態牆壁反彈機制
-                const bound = ARENA_SIZE / 2 - 1.0;
-                let bounced = false;
-                if (Math.abs(this.container.position.x) > bound) {
-                    this.container.position.x = Math.sign(this.container.position.x) * bound;
-                    this.velocity.x = -this.velocity.x * 1.3; // 彈力反彈
-                    bounced = true;
-                }
-                if (Math.abs(this.container.position.z) > bound) {
-                    this.container.position.z = Math.sign(this.container.position.z) * bound;
-                    this.velocity.z = -this.velocity.z * 1.3; // 彈力反彈
-                    bounced = true;
+                // --- 撞擊擂台彈力繩機制 (無卡頓、往後彈飛) ---
+                const bound = ARENA_SIZE / 2 - 1.2;
+                let hitRope = false;
+                let ropeSide = '';
+
+                if (this.container.position.x > bound) {
+                    this.container.position.x = bound;
+                    this.velocity.x = -Math.abs(this.velocity.x) - 7.5; // 強力彈飛
+                    hitRope = true; ropeSide = 'right';
+                } else if (this.container.position.x < -bound) {
+                    this.container.position.x = -bound;
+                    this.velocity.x = Math.abs(this.velocity.x) + 7.5; // 強力彈飛
+                    hitRope = true; ropeSide = 'left';
                 }
 
-                if (bounced) {
-                    createSparks(this.container.position.clone().add(new THREE.Vector3(0, 1, 0)), 0x00ffff);
+                if (this.container.position.z > bound) {
+                    this.container.position.z = bound;
+                    this.velocity.z = -Math.abs(this.velocity.z) - 7.5; // 強力彈飛
+                    hitRope = true; ropeSide = 'front';
+                } else if (this.container.position.z < -bound) {
+                    this.container.position.z = -bound;
+                    this.velocity.z = Math.abs(this.velocity.z) + 7.5; // 強力彈飛
+                    hitRope = true; ropeSide = 'back';
+                }
+
+                if (hitRope) {
+                    createSparks(this.container.position.clone().add(new THREE.Vector3(0, 1.5, 0)), 0xff00aa);
+                    triggerRopeVibration(ropeSide);
                 }
             }
 
@@ -386,7 +419,7 @@
                     target.takeDamage(damage, this.container.position);
                     
                     const hitPos = target.container.position.clone().add(new THREE.Vector3(0, 1.5, 0));
-                    createSparks(hitPos, target.isBlocking ? 0x00aaff : (type === 'kick' ? 0xffaa00 : 0xffffff));
+                    createSparks(hitPos, target.isBlocking ? 0x00ffff : (type === 'kick' ? 0xffaa00 : 0xffffff));
                     createImpactShockwave(hitPos);
                 }
             }
@@ -395,10 +428,9 @@
                 if (this.isDead) return;
                 this.health = Math.max(0, this.health - amount);
                 
-                // 被打到強力打飛（完全無卡頓流暢滑行）
                 const knockbackDir = new THREE.Vector3().subVectors(this.container.position, attackerPos).normalize();
-                this.velocity.copy(knockbackDir).multiplyScalar(14);
-                this.velocity.y = 3;
+                this.velocity.copy(knockbackDir).multiplyScalar(15);
+                this.velocity.y = 3.5;
 
                 updateUI();
 
@@ -409,15 +441,12 @@
             }
         }
 
-        // --- 讀取 Switch Pro 手把狀態 (左類比、ZL、ZR、L格擋) ---
+        // --- Switch Pro 手把讀取 ---
         function pollGamepad() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
             for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) {
-                    gp = gamepads[i];
-                    break;
-                }
+                if (gamepads[i]) { gp = gamepads[i]; break; }
             }
 
             const statusEl = document.getElementById('gamepad-status');
@@ -444,12 +473,8 @@
 
                 player.isBlocking = pressL;
 
-                if (pressZL && !lastButtonState['ZL']) {
-                    player.triggerAttack('punch'); // ZL 直拳 (拳擊手套)
-                }
-                if (pressZR && !lastButtonState['ZR']) {
-                    player.triggerAttack('kick');  // ZR 飛踢
-                }
+                if (pressZL && !lastButtonState['ZL']) { player.triggerAttack('punch'); }
+                if (pressZR && !lastButtonState['ZR']) { player.triggerAttack('kick'); }
 
                 lastButtonState['ZL'] = pressZL;
                 lastButtonState['ZR'] = pressZR;
@@ -480,23 +505,18 @@
             document.body.appendChild(renderer.domElement);
 
             const renderScene = new THREE.RenderPass(scene, camera);
-            const bloomPass = new THREE.UnrealBloomPass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                1.8, 0.4, 0.8
-            );
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.4, 0.8);
 
             composer = new THREE.EffectComposer(renderer);
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
             dirLight.position.set(10, 25, 10);
             scene.add(dirLight);
 
-            // 賽博龐克環境炫彩燈光
             const neonLight1 = new THREE.PointLight(0x00ffff, 4, 35);
             neonLight1.position.set(-10, 6, -10);
             scene.add(neonLight1);
@@ -517,52 +537,71 @@
             animate();
         }
 
-        // --- 建立精緻擂台與動態雙線牆壁 ---
+        // --- 建立正方形科技網格與彈力繩擂台 ---
         function createArena() {
-            // 地板
             const floorGeo = new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE);
             const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f0f1c, roughness: 0.1, metalness: 0.9 });
             const floor = new THREE.Mesh(floorGeo, floorMat);
             floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
 
-            const gridHelper = new THREE.GridHelper(ARENA_SIZE, 18, 0x00ffff, 0x222244);
+            const gridHelper = new THREE.GridHelper(ARENA_SIZE, 16, 0x00ffff, 0x222244);
             gridHelper.position.y = 0.02;
             scene.add(gridHelper);
 
-            // 建立動態雙線牆壁（每邊兩條上下高亮度發光線條）
+            // 建立四根角落柱子與多層彈力繩
+            const postGeo = new THREE.CylinderGeometry(0.2, 0.2, 3.5, 8);
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.8, roughness: 0.2 });
             const half = ARENA_SIZE / 2;
-            const lineMat1 = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-            const lineMat2 = new THREE.MeshBasicMaterial({ color: 0xff00aa });
 
-            const createDoubleLineWall = (x1, z1, x2, z2) => {
+            const corners = [
+                [-half, -half], [half, -half], [half, half], [-half, half]
+            ];
+            corners.forEach(([x, z]) => {
+                const post = new THREE.Mesh(postGeo, postMat);
+                post.position.set(x, 1.75, z);
+                scene.add(post);
+            });
+
+            // 建立彈力繩 (上下兩條)
+            const ropeMat = new THREE.MeshBasicMaterial({ color: 0xff00aa });
+            const ropeGeo = new THREE.CylinderGeometry(0.06, 0.06, ARENA_SIZE, 8);
+
+            const createRopeWall = (x1, z1, x2, z2, sideName) => {
                 const group = new THREE.Group();
-                const length = Math.hypot(x2 - x1, z2 - z1);
+                const length = ARENA_SIZE;
                 const angle = Math.atan2(x2 - x1, z2 - z1);
 
-                const wireGeo = new THREE.CylinderGeometry(0.08, 0.08, length, 8);
-                
-                const wireTop1 = new THREE.Mesh(wireGeo, lineMat1);
-                wireTop1.position.set(0, 2.2, 0);
-                wireTop1.rotation.z = Math.PI / 2;
-                wireTop1.rotation.y = angle;
+                const rope1 = new THREE.Mesh(ropeGeo, ropeMat);
+                rope1.position.set(0, 1.2, 0);
+                rope1.rotation.z = Math.PI / 2;
+                rope1.rotation.y = angle;
 
-                const wireTop2 = new THREE.Mesh(wireGeo, lineMat2);
-                wireTop2.position.set(0, 1.0, 0);
-                wireTop2.rotation.z = Math.PI / 2;
-                wireTop2.rotation.y = angle;
+                const rope2 = new THREE.Mesh(ropeGeo, ropeMat);
+                rope2.position.set(0, 2.2, 0);
+                rope2.rotation.z = Math.PI / 2;
+                rope2.rotation.y = angle;
 
-                group.add(wireTop1);
-                group.add(wireTop2);
+                group.add(rope1);
+                group.add(rope2);
                 group.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
                 scene.add(group);
-                dynamicWalls.push({ mesh1: wireTop1, mesh2: wireTop2, origY1: 2.2, origY2: 1.0 });
+
+                ringRopes.push({ group: group, side: sideName, offset: 0, vel: 0 });
             };
 
-            createDoubleLineWall(-half, -half, half, -half);
-            createDoubleLineWall(half, -half, half, half);
-            createDoubleLineWall(half, half, -half, half);
-            createDoubleLineWall(-half, half, -half, -half);
+            createRopeWall(-half, -half, half, -half, 'back');
+            createRopeWall(half, -half, half, half, 'right');
+            createRopeWall(half, half, -half, half, 'front');
+            createRopeWall(-half, half, -half, -half, 'left');
+        }
+
+        // 觸發繩子被撞擊時的彈動視覺回饋
+        function triggerRopeVibration(side) {
+            const rope = ringRopes.find(r => r.side === side);
+            if (rope) {
+                rope.vel = 0.8; // 給予彈動速度
+            }
         }
 
         function createSparks(pos, colorHex) {
@@ -617,15 +656,24 @@
             requestAnimationFrame(animate);
 
             const delta = clock.getDelta();
-            const time = clock.getElapsedTime();
 
             player.update(delta);
             enemy.update(delta);
 
-            // 讓雙線霓虹牆壁產生動態微幅波動特效
-            dynamicWalls.forEach((w, idx) => {
-                w.mesh1.position.y = w.origY1 + Math.sin(time * 5 + idx) * 0.08;
-                w.mesh2.position.y = w.origY2 + Math.cos(time * 5 + idx) * 0.08;
+            // 更新彈力繩物理彈動動畫
+            ringRopes.forEach(rope => {
+                if (Math.abs(rope.offset) > 0.001 || Math.abs(rope.vel) > 0.001) {
+                    rope.vel -= rope.offset * 25 * delta; // 彈簧恢復力
+                    rope.vel *= 0.85; // 阻尼衰減
+                    rope.offset += rope.vel * delta;
+                    
+                    if (rope.side === 'back' || rope.side === 'front') {
+                        rope.group.position.z += rope.offset * 0.1;
+                    } else {
+                        rope.group.position.x += rope.offset * 0.1;
+                    }
+                    rope.offset *= 0.95;
+                }
             });
 
             for (let i = particles.length - 1; i >= 0; i--) {
