@@ -2,867 +2,399 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>Roblox 3D Smash Arena - AI Ultimate Edition</title>
+    <title>3D Arena LightSaber Smash</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: #09090e;
-            color: #fff;
+            margin: 0;
+            overflow: hidden;
+            background: #000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            user-select: none;
         }
-        #game-container {
-            position: relative;
-            width: 1280px;
-            height: 720px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 50px rgba(255, 69, 0, 0.4);
-            border-radius: 14px;
-            overflow: hidden;
-            border: 3px solid #555;
-        }
-        canvas {
-            display: block;
-            background: linear-gradient(135deg, #0d0b1e 0%, #291b3d 100%);
-        }
-        /* 主選單樣式 */
-        #menu-screen {
+        #ui {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(10, 10, 20, 0.9), rgba(30, 10, 20, 0.95));
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-            transition: opacity 0.5s ease;
-        }
-        #menu-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .game-title {
-            font-size: 56px;
-            font-weight: 900;
-            color: #ff4500;
-            text-shadow: 0 0 25px rgba(255, 69, 0, 0.9), 0 0 50px rgba(255, 0, 0, 0.6);
-            margin-bottom: 40px;
-            letter-spacing: 4px;
-            text-align: center;
-        }
-        .menu-btn {
-            background: linear-gradient(135deg, #ff4500, #ff8c00);
-            color: white;
-            border: none;
-            padding: 16px 48px;
-            font-size: 24px;
+            gap: 50px;
+            color: #fff;
             font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(255, 69, 0, 0.5);
-            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-            margin: 15px;
-            width: 340px;
-            letter-spacing: 2px;
-        }
-        .menu-btn:hover {
-            transform: scale(1.06);
-            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.9);
-        }
-        .menu-btn.training {
-            background: linear-gradient(135deg, #00bfff, #1e90ff);
-            box-shadow: 0 6px 20px rgba(0, 191, 255, 0.5);
-        }
-        .menu-btn.training:hover {
-            box-shadow: 0 8px 25px rgba(0, 191, 255, 0.9);
-        }
-
-        /* 遊戲內介面 */
-        .ui-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
             pointer-events: none;
-            display: flex;
-            justify-content: space-between;
-            padding: 25px 40px;
-        }
-        .player-hud {
-            display: flex;
-            flex-direction: column;
-            width: 40%;
-        }
-        .player-hud.p2 {
-            align-items: flex-end;
-        }
-        .hud-name {
-            font-size: 20px;
-            font-weight: 900;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.9);
-            margin-bottom: 8px;
-            letter-spacing: 2px;
-        }
-        .p1-color { color: #ff3344; }
-        .p2-color { color: #00d2ff; }
-        
-        .health-bar-container {
-            width: 100%;
-            height: 28px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 3px solid #fff;
-            border-radius: 6px;
-            overflow: hidden;
-            box-shadow: 0 0 15px rgba(0,0,0,0.6);
-        }
-        .health-fill {
-            height: 100%;
-            width: 100%;
-            transition: width 0.1s ease-out;
-        }
-        .p1-fill { background: linear-gradient(90deg, #ff1a33, #ff8800); }
-        .p2-fill { background: linear-gradient(90deg, #0066ff, #00ffcc); }
-
-        .controls-hint {
-            position: absolute;
-            bottom: 12px;
-            width: 100%;
-            text-align: center;
-            font-size: 13px;
-            color: rgba(255,255,255,0.75);
-            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-            pointer-events: none;
-            letter-spacing: 1px;
-        }
-
-        #win-screen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             z-index: 10;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
         }
-        #win-screen.active {
-            opacity: 1;
-            pointer-events: auto;
+        .hud-box {
+            background: rgba(20, 20, 30, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            text-align: center;
         }
-        #win-text {
-            font-size: 64px;
-            font-weight: 900;
-            margin-bottom: 20px;
-            text-shadow: 0 0 25px rgba(255,255,255,0.9);
+        #cooldown-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 10;
+        }
+        #cooldown-fill {
+            width: 100%;
+            height: 100%;
+            background: #00ffcc;
+            transition: width 0.1s linear;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            font-size: 14px;
+            z-index: 10;
+            text-align: center;
         }
     </style>
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="canvas" width="1280" height="720"></canvas>
-    
-    <div id="menu-screen">
-        <div class="game-title">ROBLOX 3D SMASH ARENA<br><span style="font-size: 26px; color: #00d2ff;">AI 智能對戰升級版</span></div>
-        <button class="menu-btn" onclick="startGame('pvp')">⚔️ 正式模式 (對戰 智能 AI)</button>
-        <button class="menu-btn training" onclick="startGame('training')">🎯 訓練沙包模式 (無限復活)</button>
-    </div>
-
-    <div class="ui-overlay" id="game-ui" style="display: none;">
-        <div class="player-hud p1">
-            <div class="hud-name p1-color">P1: ROBLOX WARRIOR</div>
-            <div class="health-bar-container">
-                <div id="p1-health" class="health-fill p1-fill" style="width: 100%;"></div>
-            </div>
+    <div id="ui">
+        <div class="hud-box" style="border-color: #ff3344;">
+            <div>P1 (玩家) 生命值</div>
+            <div id="p1-hp" style="font-size: 24px; color: #ff3344;">100</div>
         </div>
-        <div class="player-hud p2">
-            <div id="p2-title" class="hud-name p2-color">P2: SMART AI MASTER</div>
-            <div class="health-bar-container">
-                <div id="p2-health" class="health-fill p2-fill" style="width: 100%;"></div>
-            </div>
+        <div class="hud-box" style="border-color: #00d2ff;">
+            <div>P2 (AI 敵手) 生命值</div>
+            <div id="p2-hp" style="font-size: 24px; color: #00d2ff;">100</div>
         </div>
     </div>
 
-    <div class="controls-hint" id="controls-hint" style="display: none;">
-        [W A S D] 移動與跳躍 | [空白鍵] 究極斬擊 | [E] 上鉤拳 | [R] 爆裂飛踢
-    </div>
+    <div id="instructions">【控制方式】鍵盤 A/D 移動, W 跳躍, J 揮劍, K 發射劍刺 | 或使用手柄：左搖桿移動, A鍵發射劍刺</div>
 
-    <div id="win-screen">
-        <div id="win-text">PLAYER 1 WINS!</div>
-        <button class="menu-btn" onclick="returnToMenu()">返回主選單</button>
+    <div id="cooldown-bar">
+        <div id="cooldown-fill"></div>
     </div>
-</div>
 
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+// --- 遊戲初始化與場景設定 ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+scene.fog = new THREE.FogExp2(0x050510, 0.015);
 
-let gameMode = 'pvp';
-let isPlaying = false;
-let screenShake = 0; // 全螢幕震動值
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+// 視角拉到最大以完整看到雙方與岩漿邊緣縫隙
+camera.position.set(0, 22, 32);
+camera.lookAt(0, 0, 0);
 
-const AudioSys = {
-    ctx: null,
-    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
-    playTone(freq, type, duration, vol=0.1) {
-        try {
-            this.init();
-            if(!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(); osc.stop(this.ctx.currentTime + duration);
-        } catch(e){}
-    },
-    slash() { this.playTone(550, 'sawtooth', 0.1, 0.3); },
-    hit() { this.playTone(140, 'square', 0.15, 0.35); },
-    burn() { this.playTone(80, 'sawtooth', 0.2, 0.3); },
-    special() {
-        this.init();
-        if(!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.35);
-        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.35);
-    }
-};
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
 
-// 滿特效粒子與殘影系統
-class ParticleSystem {
-    constructor() { this.particles = []; this.popups = []; this.slashes = []; }
-    
-    emitSlashArc(x, y, facing, color) {
-        // 超華麗的半月斬刀光殘影特效
-        this.slashes.push({ x, y, facing, color, life: 1, maxLife: 10 });
-    }
+// --- 燈光設定 ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
 
-    emit(x, y, color, count=25, speed=10, life=35) {
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const spd = Math.random() * speed + 2;
-            this.particles.push({
-                x, y, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd,
-                color, size: Math.random() * 9 + 4, alpha: 1, decay: 1 / life
-            });
-        }
-    }
-    emitDamagePopup(x, y, text, isCrit=false) {
-        this.popups.push({ x, y, text, alpha: 1, vy: -2.5, isCrit });
-    }
-    update() {
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
-            p.x += p.vx; p.y += p.vy; p.vy += 0.45; p.alpha -= p.decay;
-            if (p.alpha <= 0) this.particles.splice(i, 1);
-        }
-        for (let i = this.slashes.length - 1; i >= 0; i--) {
-            let s = this.slashes[i];
-            s.life--;
-            if (s.life <= 0) this.slashes.splice(i, 1);
-        }
-        for (let i = this.popups.length - 1; i >= 0; i--) {
-            let pop = this.popups[i];
-            pop.y += pop.vy; pop.alpha -= 0.025;
-            if (pop.alpha <= 0) this.popups.splice(i, 1);
-        }
-    }
-    draw(ctx) {
-        ctx.save();
-        // 繪製斬擊半月光束特效
-        for (let s of this.slashes) {
-            ctx.save();
-            ctx.translate(s.x, s.y);
-            ctx.scale(s.facing, 1);
-            ctx.strokeStyle = s.color;
-            ctx.lineWidth = 8;
-            ctx.shadowColor = s.color;
-            ctx.shadowBlur = 25;
-            ctx.beginPath();
-            ctx.arc(0, 0, 65, -Math.PI/3, Math.PI/3);
-            ctx.stroke();
-            ctx.restore();
-        }
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 40, 20);
+dirLight.castShadow = true;
+scene.add(dirLight);
 
-        // 繪製粒子
-        for (let p of this.particles) {
-            ctx.globalAlpha = Math.max(0, p.alpha);
-            ctx.fillStyle = p.color;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = 10;
-            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
-        }
+// --- 3D 競技場與邊緣縫隙、岩漿 ---
+// 外圍岩漿
+const lavaGeo = new THREE.PlaneGeometry(200, 200);
+const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+const lavaMesh = new THREE.Mesh(lavaGeo, lavaMat);
+lavaMesh.rotation.x = -Math.PI / 2;
+lavaMesh.position.y = -5;
+scene.add(lavaMesh);
 
-        // 繪製傷害數字
-        for (let pop of this.popups) {
-            ctx.globalAlpha = Math.max(0, pop.alpha);
-            ctx.font = pop.isCrit ? '900 30px Segoe UI' : 'bold 22px Segoe UI';
-            ctx.fillStyle = pop.isCrit ? '#ff0055' : '#ffcc00';
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 4;
-            ctx.strokeText(pop.text, pop.x, pop.y);
-            ctx.fillText(pop.text, pop.x, pop.y);
-        }
-        ctx.restore();
-    }
-}
-const particles = new ParticleSystem();
+// 主島嶼平台（帶有邊緣縫隙可以把人打下去）
+const arenaGeo = new THREE.BoxGeometry(24, 2, 24);
+const arenaMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.4 });
+const arena = new THREE.Mesh(arenaGeo, arenaMat);
+arena.position.y = -1;
+arena.receiveShadow = true;
+scene.add(arena);
 
-const keys = {};
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    AudioSys.init();
-    if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-});
-window.addEventListener('keyup', e => { keys[e.code] = false; });
-
-const platforms = [
-    { x: 240, y: 440, w: 220, h: 22, color: '#4a3b6c' },
-    { x: 820, y: 440, w: 220, h: 22, color: '#4a3b6c' },
-    { x: 500, y: 310, w: 280, h: 22, color: '#5b478a' }
+// 四塊邊緣小平台與縫隙
+const platforms = [];
+const pConfigs = [
+    { x: -15, z: 0 }, { x: 15, z: 0 }, { x: 0, z: -15 }, { x: 0, z: 15 }
 ];
-const LAVA_Y = 650;
+pConfigs.forEach(pos => {
+    const pGeo = new THREE.BoxGeometry(6, 1.5, 6);
+    const pMat = new THREE.MeshStandardMaterial({ color: 0x444466 });
+    const pMesh = new THREE.Mesh(pGeo, pMat);
+    pMesh.position.set(pos.x, -0.5, pos.z);
+    pMesh.receiveShadow = true;
+    scene.add(pMesh);
+    platforms.push(pMesh);
+});
 
-class RobloxFighter {
-    constructor(x, color, isPlayer1, isDummy=false, isAI=false) {
-        this.startX = x;
-        this.color = color;
-        this.isPlayer1 = isPlayer1;
-        this.isDummy = isDummy;
+// --- 角色與長光劍類別 ---
+class Fighter {
+    constructor(x, z, color, isAI = false) {
         this.isAI = isAI;
-        this.reset();
-    }
+        this.hp = 100;
+        this.mesh = new THREE.Group();
+        this.mesh.position.set(x, 0, z);
 
-    reset() {
-        this.x = this.startX;
-        this.y = 400;
-        this.width = 46;
-        this.height = 96;
+        // 身體
+        const bodyGeo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: color });
+        this.body = new THREE.Mesh(bodyGeo, bodyMat);
+        this.body.position.y = 1.1;
+        this.body.castShadow = true;
+        this.mesh.add(this.body);
+
+        // 頭部
+        const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.4;
+        this.mesh.add(head);
+
+        // 拿著的長長光劍
+        const saberGroup = new THREE.Group();
+        // 劍柄
+        const hiltGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8);
+        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const hilt = new THREE.Mesh(hiltGeo, hiltMat);
+        hilt.position.y = 0.4;
+        saberGroup.add(hilt);
+
+        // 長光劍刃
+        const bladeGeo = new THREE.CylinderGeometry(0.12, 0.12, 4.5);
+        const bladeMat = new THREE.MeshBasicMaterial({ color: color });
+        this.bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
+        this.bladeMesh.position.y = 2.8;
+        saberGroup.add(this.bladeMesh);
+
+        saberGroup.position.set(0.9, 1.0, 0.8);
+        saberGroup.rotation.x = Math.PI / 4;
+        this.saber = saberGroup;
+        this.mesh.add(saberGroup);
+
+        scene.add(this.mesh);
+
         this.vx = 0;
+        this.vz = 0;
         this.vy = 0;
-        this.speed = 4.8;
-        this.jumpForce = -15.5;
-        this.gravity = 0.75;
-        this.isGrounded = false;
-        this.health = 100;
-        this.facing = this.isPlayer1 ? 1 : -1;
+        this.isGrounded = true;
+        this.speed = 0.15;
+        this.swordAngle = 0;
+        this.isSwinging = false;
         
-        this.state = 'idle';
-        this.animTimer = Math.random() * 10;
-        this.attackCooldown = 0;
-        this.knockdownTimer = 0;
-        this.hitStunTimer = 0;
-        this.burnTimer = 0;
-        
-        this.aiDecisionTimer = 0;
-        this.aiAction = 'idle';
-
-        this.hitbox = { x: 0, y: 0, w: 0, h: 0, active: false, damage: 0, kbX: 0, kbY: 0 };
+        // 劍刺冷卻
+        this.spikeCooldown = 0;
     }
 
     update(opponent) {
-        if (this.health <= 0 && !this.isDummy) return;
+        if (this.hp <= 0) return;
 
-        if (this.isDummy && this.health <= 0) {
-            this.health = 100;
-            this.y = 400;
-            this.vx = 0; this.vy = 0;
-            particles.emit(this.x, this.y, '#00ffcc', 35, 10, 40);
-        }
+        // 物理移動與重力
+        this.vy -= 0.015;
+        this.mesh.position.y += this.vy;
+        this.mesh.position.x += this.vx;
+        this.mesh.position.z += this.vz;
 
-        if (this.attackCooldown > 0) this.attackCooldown--;
-        if (this.hitStunTimer > 0) {
-            this.hitStunTimer--;
-            if (this.hitStunTimer === 0 && this.state === 'hit') this.state = 'idle';
-        }
-        if (this.knockdownTimer > 0) {
-            this.knockdownTimer--;
-            this.state = 'knocked_down';
-            if (this.knockdownTimer === 0) {
-                this.state = 'idle';
-                this.vy = -10;
-            }
-            return;
-        }
-        if (this.burnTimer > 0) {
-            this.burnTimer--;
-            this.health -= 0.6;
-            particles.emit(this.x + this.width/2, this.y + this.height, '#ff4500', 4, 5, 10);
-            if (this.health <= 0 && !this.isDummy) checkWinCondition();
-            updateUI();
+        // 簡單地板與平台碰撞檢測 (若掉落小於 -4 則落入岩漿)
+        if (this.mesh.position.y < -4) {
+            this.hp = 0;
             return;
         }
 
-        let moveLeft = false, moveRight = false, jump = false, crouch = false;
-        let slash = false, uppercut = false, kick = false;
-
-        if (this.isPlayer1) {
-            moveLeft = keys['KeyA'];
-            moveRight = keys['KeyD'];
-            jump = keys['KeyW'];
-            crouch = keys['KeyS'];
-            if (keys['Space'] && this.attackCooldown === 0) slash = true;
-            if (keys['KeyE'] && this.attackCooldown === 0) uppercut = true;
-            if (keys['KeyR'] && this.attackCooldown === 0) kick = true;
-        } else if (this.isAI) {
-            // 🤖 聰明的電腦 AI 邏輯
-            this.aiDecisionTimer++;
-            let dist = opponent.x - this.x;
-            let absDist = Math.abs(dist);
-
-            if (this.aiDecisionTimer > 35) {
-                this.aiDecisionTimer = 0;
-                if (absDist > 350) {
-                    this.aiAction = 'approach';
-                } else if (absDist < 110) {
-                    // 近距離隨機發動攻擊或後撤
-                    let rand = Math.random();
-                    if (rand < 0.5 && this.attackCooldown === 0) this.aiAction = 'slash';
-                    else if (rand < 0.75 && this.attackCooldown === 0) this.aiAction = 'uppercut';
-                    else if (rand < 0.9 && this.attackCooldown === 0) this.aiAction = 'kick';
-                    else this.aiAction = 'retreat';
-                } else {
-                    this.aiAction = Math.random() < 0.6 ? 'approach' : 'jump_platform';
-                }
-            }
-
-            if (this.aiAction === 'approach') {
-                if (dist > 20) moveRight = true;
-                else if (dist < -20) moveLeft = true;
-            } else if (this.aiAction === 'retreat') {
-                if (dist > 0) moveLeft = true;
-                else moveRight = true;
-            } else if (this.aiAction === 'jump_platform') {
-                if (this.isGrounded) jump = true;
-                if (dist > 0) moveRight = true; else moveLeft = true;
-            }
-
-            if (this.aiAction === 'slash' && this.attackCooldown === 0) { slash = true; this.aiAction = 'approach'; }
-            if (this.aiAction === 'uppercut' && this.attackCooldown === 0) { uppercut = true; this.aiAction = 'approach'; }
-            if (this.aiAction === 'kick' && this.attackCooldown === 0) { kick = true; this.aiAction = 'approach'; }
-
-            // 保持面對玩家
-            this.facing = dist >= 0 ? 1 : -1;
-        } else if (this.isDummy) {
-            if (this.x < 700) moveRight = true;
-            else if (this.x > 900) moveLeft = true;
-        }
-
-        // 移動與跳躍物理
-        if (this.state !== 'attack' || this.isGrounded) {
-            if (crouch && this.isGrounded) {
-                this.state = 'crouch';
-                this.vx = 0;
-            } else if (moveLeft) {
-                this.vx = -this.speed;
-                this.facing = -1;
-                if (this.isGrounded) this.state = 'walk';
-            } else if (moveRight) {
-                this.vx = this.speed;
-                this.facing = 1;
-                if (this.isGrounded) this.state = 'walk';
-            } else {
-                this.vx = 0;
-                if (this.isGrounded && this.state !== 'crouch') this.state = 'idle';
-            }
-
-            if (jump && this.isGrounded && this.state !== 'crouch') {
-                this.vy = this.jumpForce;
-                this.isGrounded = false;
-                this.state = 'jump';
-                AudioSys.playTone(380, 'sine', 0.1, 0.08);
-            }
-        }
-
-        // 觸發攻擊與「滿特效」輸出
-        if (slash) this.executeAttack('slash', 12, 55, 9, -5, 14, '#00ffff');
-        else if (uppercut) this.executeAttack('uppercut', 26, 65, 7, -19, 30, '#ffaa00');
-        else if (kick) this.executeAttack('kick', 22, 70, 18, -10, 25, '#ff2244');
-
-        this.vy += this.gravity;
-        this.x += this.vx;
-        this.y += this.vy;
-
-        // 平台與地面碰撞
-        this.isGrounded = false;
-        let groundLevel = 540;
-
-        for (let p of platforms) {
-            if (this.vy > 0 && 
-                this.x + this.width > p.x && this.x < p.x + p.w &&
-                this.y + this.height >= p.y && this.y + this.height <= p.y + p.h + 12) {
-                this.y = p.y - this.height;
-                this.vy = 0;
-                this.isGrounded = true;
-                if (this.state === 'jump') this.state = 'idle';
-            }
-        }
-
-        if (this.y + this.height >= groundLevel) {
-            this.y = groundLevel - this.height;
+        // 簡易島嶼平台地面判定
+        if (this.mesh.position.y <= 0 && 
+            Math.abs(this.mesh.position.x) < 13 && 
+            Math.abs(this.mesh.position.z) < 13) {
+            this.mesh.position.y = 0;
             this.vy = 0;
             this.isGrounded = true;
-            if (this.state === 'jump') this.state = 'idle';
         }
 
-        if (this.y + this.height >= LAVA_Y) {
-            this.burnTimer = 45;
-            AudioSys.burn();
-            particles.emit(this.x + this.width/2, LAVA_Y, '#ff4500', 10, 8, 20);
+        // 殘影效果：生成殘影殘留物
+        if (Math.abs(this.vx) > 0.01 || Math.abs(this.vz) > 0.01 || this.isSwinging) {
+            createTrail(this.mesh.position, this.body.material.color);
         }
 
-        if (this.x < 40) this.x = 40;
-        if (this.x + this.width > canvas.width - 40) this.x = canvas.width - 40 - this.width;
+        // 減速
+        this.vx *= 0.85;
+        this.vz *= 0.85;
 
-        this.animTimer += 0.18;
-
-        if (this.hitbox.active) {
-            const opBox = { x: opponent.x, y: opponent.y, w: opponent.width, h: opponent.height };
-            if (this.isColliding(this.hitbox, opBox)) {
-                this.hitbox.active = false;
-                screenShake = 14; // 觸發全螢幕強烈震動
-                opponent.takeDamage(this.hitbox.damage, this.hitbox.kbX * this.facing, this.hitbox.kbY, this.hitbox.knockdown);
-                particles.emitDamagePopup(opponent.x + opponent.width/2, opponent.y - 15, `-${this.hitbox.damage}`, this.hitbox.damage > 20);
+        // AI 邏輯
+        if (this.isAI) {
+            let dx = p1.mesh.position.x - this.mesh.position.x;
+            let dz = p1.mesh.position.z - this.mesh.position.z;
+            let dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist > 2) {
+                this.mesh.position.x += (dx / dist) * 0.06;
+                this.mesh.position.z += (dz / dist) * 0.06;
             }
+            // AI 揮劍面向玩家
+            this.mesh.lookAt(p1.mesh.position);
         }
     }
 
-    executeAttack(type, damage, range, kbX, kbY, cooldown, color) {
-        this.state = 'attack';
-        this.attackCooldown = cooldown;
-        this.animTimer = 0;
-        
-        let isKnockdown = (type === 'uppercut' || type === 'kick');
-        
-        this.hitbox = {
-            x: this.facing === 1 ? this.x + this.width : this.x - range - 15,
-            y: this.y + 10,
-            w: range + 15,
-            h: 60,
-            active: true,
-            damage: damage,
-            kbX: kbX,
-            kbY: kbY,
-            knockdown: isKnockdown
-        };
+    swing() {
+        if (this.isSwinging) return;
+        this.isSwinging = true;
+        let t = 0;
+        let interval = setInterval(() => {
+            t += 0.2;
+            this.saber.rotation.z = Math.sin(t) * 1.5;
+            if (t > Math.PI) {
+                clearInterval(interval);
+                this.saber.rotation.z = 0;
+                this.isSwinging = false;
+            }
+        }, 20);
+    }
+}
 
-        // 揮刀特效開到滿：產生半月光弧與滿天霓虹粒子
-        particles.emitSlashArc(this.x + (this.facing === 1 ? this.width + 20 : -20), this.y + 35, this.facing, color);
-        particles.emit(this.hitbox.x + this.hitbox.w/2, this.hitbox.y + 25, color, 30, 12, 20);
+const p1 = new Fighter(-6, 0, 0xff3344, false);
+const p2 = new Fighter(6, 0, 0x00d2ff, true);
 
-        if (type === 'slash') {
-            AudioSys.slash();
-        } else if (type === 'uppercut') {
-            AudioSys.special();
-            particles.emit(this.x + (this.facing*35), this.y, '#ffff00', 40, 15, 30);
-        } else if (type === 'kick') {
-            AudioSys.slash();
-            this.vx = this.facing * 16;
-            particles.emit(this.x + (this.facing*45), this.y + 30, '#ff0055', 40, 15, 30);
+// --- 殘影特效系統 ---
+const trails = [];
+function createTrail(pos, color) {
+    const geo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.position.y += 1.1;
+    scene.add(mesh);
+    trails.push({ mesh: mesh, life: 15 });
+}
+
+// --- 發射劍刺系統 ---
+const spikes = [];
+function fireSpike(fighter, target) {
+    if (fighter.spikeCooldown > 0) return;
+    fighter.spikeCooldown = 300; // 5秒冷卻 (60fps * 5)
+
+    const spikeGeo = new THREE.ConeGeometry(0.3, 2, 8);
+    const spikeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const spike = new THREE.Mesh(spikeGeo, spikeMat);
+    spike.position.copy(fighter.mesh.position);
+    spike.position.y += 1.5;
+
+    // 計算朝向對手的方向向量
+    const dir = new THREE.Vector3().subVectors(target.mesh.position, fighter.mesh.position).normalize();
+    spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    
+    scene.add(spike);
+    spikes.push({ mesh: spike, dir: dir, speed: 0.4 });
+}
+
+// --- 輸入控制 (支援鍵盤與 Gamepad 搖桿) ---
+const keys = {};
+window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+function handleInput() {
+    // 鍵盤控制 P1
+    if (keys['KeyA']) p1.vx = -p1.speed;
+    if (keys['KeyD']) p1.vx = p1.speed;
+    if (keys['KeyW']) p1.vz = -p1.speed;
+    if (keys['KeyS']) p1.vz = p1.speed;
+    if (keys['KeyJ']) p1.swing();
+    if (keys['KeyK']) fireSpike(p1, p2);
+
+    // Gamepad 實體搖桿控制 (如 Switch Pro 手把)
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    if (gamepads[0]) {
+        const gp = gamepads[0];
+        // 左搖桿移動
+        let ax = gp.axes[0];
+        let ay = gp.axes[1];
+        if (Math.abs(ax) > 0.1) p1.vx = ax * p1.speed;
+        if (Math.abs(ay) > 0.1) p1.vz = ay * p1.speed;
+
+        // A 鍵 (通常是 buttons[0] 或 buttons[1] 依瀏覽器而定，通常 Switch A 是右側下方的按鈕)
+        if (gp.buttons[0] && gp.buttons[0].pressed) {
+            fireSpike(p1, p2);
+        }
+        // X 鍵或 B 鍵揮劍
+        if (gp.buttons[1] && gp.buttons[1].pressed) {
+            p1.swing();
+        }
+    }
+}
+
+// --- 遊戲主循環 ---
+function animate() {
+    requestAnimationFrame(animate);
+
+    handleInput();
+
+    p1.update(p2);
+    p2.update(p1);
+
+    // 更新劍刺冷卻計數與介面
+    if (p1.spikeCooldown > 0) p1.spikeCooldown--;
+    let cdPercent = (p1.spikeCooldown / 300) * 100;
+    document.getElementById('cooldown-fill').style.width = (100 - cdPercent) + '%';
+    document.getElementById('cooldown-fill').style.background = p1.spikeCooldown === 0 ? '#00ffcc' : '#ffaa00';
+
+    // 更新劍刺飛行與碰撞
+    for (let i = spikes.length - 1; i >= 0; i--) {
+        let s = spikes[i];
+        s.mesh.position.addScaledVector(s.dir, s.speed);
+
+        // 碰撞 P2 檢測
+        if (s.mesh.position.distanceTo(p2.mesh.position) < 2) {
+            p2.hp -= 25;
+            // 擊飛效果
+            p2.vx += s.dir.x * 0.8;
+            p2.vz += s.dir.z * 0.8;
+            scene.remove(s.mesh);
+            spikes.splice(i, 1);
+            continue;
         }
 
-        setTimeout(() => {
-            this.hitbox.active = false;
-            if (this.state === 'attack') this.state = 'idle';
-        }, 220);
-    }
-
-    isColliding(b1, b2) {
-        return b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y;
-    }
-
-    takeDamage(dmg, kbX, kbY, isKnockdown) {
-        if (this.isDummy) {
-            this.health = Math.max(0, this.health - dmg);
-            AudioSys.hit();
-            particles.emit(this.x + this.width/2, this.y + this.height/2, '#00ffcc', 25, 10, 20);
-            return;
+        // 超出範圍移除
+        if (s.mesh.position.length() > 60) {
+            scene.remove(s.mesh);
+            spikes.splice(i, 1);
         }
+    }
 
-        this.health = Math.max(0, this.health - dmg);
-        AudioSys.hit();
-        particles.emit(this.x + this.width/2, this.y + this.height/2, '#ff0055', 35, 12, 25);
-        
-        this.vx = kbX;
-        this.vy = kbY;
-        this.isGrounded = false;
-
-        if (isKnockdown) {
-            this.state = 'knocked_down';
-            this.knockdownTimer = 60;
-        } else {
-            this.state = 'hit';
-            this.hitStunTimer = 16;
+    // 更新殘影特效
+    for (let i = trails.length - 1; i >= 0; i--) {
+        let t = trails[i];
+        t.life--;
+        t.mesh.material.opacity -= 0.03;
+        if (t.life <= 0) {
+            scene.remove(t.mesh);
+            trails.splice(i, 1);
         }
-
-        updateUI();
-        if (gameMode === 'pvp') checkWinCondition();
     }
 
-    draw(ctx) {
-        ctx.save();
-        let cx = this.x + this.width / 2;
-        let cy = this.y;
+    // 更新 UI 血量
+    document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
+    document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
 
-        if (this.state === 'knocked_down') {
-            ctx.save();
-            ctx.translate(cx, 540 - 15);
-            ctx.rotate(this.facing * Math.PI / 2);
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-22, -12, 44, 24);
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(-22, -12, 44, 24);
-            ctx.fillStyle = '#f5d6b0';
-            ctx.fillRect(-35, -12, 16, 24);
-            ctx.strokeRect(-35, -12, 16, 24);
-            // 暈眩星星
-            ctx.fillStyle = '#ffcc00';
-            let sa = Date.now() * 0.015;
-            ctx.beginPath();
-            ctx.arc(Math.cos(sa) * 22, -32 + Math.sin(sa)*4, 4, 0, Math.PI*2);
-            ctx.arc(Math.cos(sa + Math.PI) * 22, -32 + Math.sin(sa+Math.PI)*4, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.restore();
-            ctx.restore();
-            return;
-        }
-
-        // 陰影
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath();
-        ctx.ellipse(cx, 540, 24, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        let bodyColor = this.color;
-        let limbColor = '#222233';
-        let skinColor = '#f5d6b0';
-
-        let headX = cx - 8;
-        let headY = cy;
-        let torsoX = cx - 14;
-        let torsoY = cy + 24;
-        let torsoW = 28;
-        let torsoH = 40;
-
-        if (this.state === 'crouch') {
-            torsoY += 20; torsoH -= 20; headY += 20;
-        }
-
-        // 頭部
-        ctx.fillStyle = skinColor;
-        ctx.fillRect(headX, headY, 22, 22);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
-        ctx.strokeRect(headX, headY, 22, 22);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(headX + (this.facing === 1 ? 12 : 4), headY + 7, 4, 6);
-
-        // 軀幹
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(torsoX, torsoY, torsoW, torsoH);
-        ctx.strokeRect(torsoX, torsoY, torsoW, torsoH);
-
-        let armSwing = (this.state === 'walk') ? Math.sin(this.animTimer * 2.5) * 18 : 0;
-        let attackOffset = (this.state === 'attack') ? this.facing * 35 : 0;
-
-        // 右手臂與滿特效光劍
-        ctx.save();
-        ctx.translate(torsoX + torsoW, torsoY + 6);
-        ctx.rotate((armSwing + attackOffset) * Math.PI / 180);
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(0, 0, 10, 18);
-        ctx.strokeRect(0, 0, 10, 18);
-        ctx.translate(0, 16);
-        ctx.rotate(0.3);
-        ctx.fillStyle = skinColor;
-        ctx.fillRect(0, 0, 9, 16);
-        ctx.strokeRect(0, 0, 9, 16);
-
-        // 3D 巨型發光戰刀
-        ctx.fillStyle = '#aaa';
-        ctx.fillRect(4, -14, 7, 42);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-        ctx.strokeRect(4, -14, 7, 42);
-        // 霓虹光暈刃
-        ctx.fillStyle = this.isPlayer1 ? '#00ffff' : '#ff00ff';
-        ctx.shadowColor = ctx.fillStyle;
-        ctx.shadowBlur = 15;
-        ctx.fillRect(6, -12, 3, 38);
-        ctx.restore();
-
-        // 左手臂
-        ctx.save();
-        ctx.translate(torsoX, torsoY + 6);
-        ctx.rotate((-armSwing) * Math.PI / 180);
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(-10, 0, 10, 18);
-        ctx.strokeRect(-10, 0, 10, 18);
-        ctx.translate(-10, 16);
-        ctx.fillStyle = skinColor;
-        ctx.fillRect(0, 0, 9, 16);
-        ctx.strokeRect(0, 0, 9, 16);
-        ctx.restore();
-
-        // 雙腿
-        let legSwing = (this.state === 'walk') ? Math.sin(this.animTimer * 2.5) * 20 : 0;
-        ctx.fillStyle = limbColor;
-        ctx.fillRect(torsoX + 4, torsoY + torsoH, 10, 16);
-        ctx.strokeRect(torsoX + 4, torsoY + torsoH, 10, 16);
-        ctx.fillRect(torsoX + 4 + (legSwing*0.2), torsoY + torsoH + 16, 10, 16);
-        ctx.strokeRect(torsoX + 4 + (legSwing*0.2), torsoY + torsoH + 16, 10, 16);
-
-        ctx.fillRect(torsoX + 14, torsoY + torsoH, 10, 16);
-        ctx.strokeRect(torsoX + 14, torsoY + torsoH, 10, 16);
-        ctx.fillRect(torsoX + 14 - (legSwing*0.2), torsoY + torsoH + 16, 10, 16);
-        ctx.strokeRect(torsoX + 14 - (legSwing*0.2), torsoY + torsoH + 16, 10, 16);
-
-        ctx.restore();
-    }
+    renderer.render(scene, camera);
 }
 
-let p1 = new RobloxFighter(250, '#ff3344', true);
-let p2 = new RobloxFighter(950, '#00d2ff', false, false, true); // 正式模式預設啟動 AI
+animate();
 
-function startGame(mode) {
-    gameMode = mode;
-    isPlaying = true;
-    document.getElementById('menu-screen').classList.add('hidden');
-    document.getElementById('game-ui').style.display = 'flex';
-    document.getElementById('controls-hint').style.display = 'block';
-
-    if (gameMode === 'training') {
-        p2 = new RobloxFighter(900, '#00ffcc', false, true, false);
-        document.getElementById('p2-title').innerText = "TRAINING DUMMY (INFINITE)";
-    } else {
-        p2 = new RobloxFighter(950, '#00d2ff', false, false, true); // 聰明的 AI 對手
-        document.getElementById('p2-title').innerText = "SMART AI MASTER";
-    }
-    resetGame();
-}
-
-function returnToMenu() {
-    isPlaying = false;
-    document.getElementById('menu-screen').classList.remove('hidden');
-    document.getElementById('game-ui').style.display = 'none';
-    document.getElementById('controls-hint').style.display = 'none';
-    document.getElementById('win-screen').classList.remove('active');
-}
-
-function updateUI() {
-    document.getElementById('p1-health').style.width = Math.max(0, p1.health) + '%';
-    document.getElementById('p2-health').style.width = Math.max(0, p2.health) + '%';
-}
-
-function checkWinCondition() {
-    if (gameMode === 'training') return;
-    if (p1.health <= 0 || p2.health <= 0) {
-        const winScreen = document.getElementById('win-screen');
-        const winText = document.getElementById('win-text');
-        if (p1.health <= 0 && p2.health <= 0) {
-            winText.innerText = "DRAW!";
-            winText.style.color = "#ffcc00";
-        } else if (p1.health <= 0) {
-            winText.innerText = "AI MASTER WINS!";
-            winText.style.color = "#00d2ff";
-        } else {
-            winText.innerText = "PLAYER 1 WINS!";
-            winText.style.color = "#ff3344";
-        }
-        winScreen.classList.add('active');
-    }
-}
-
-function resetGame() {
-    p1.reset();
-    p2.reset();
-    document.getElementById('win-screen').classList.remove('active');
-    updateUI();
-}
-
-function drawStage() {
-    let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#0c071e');
-    grad.addColorStop(0.6, '#1e1438');
-    grad.addColorStop(1, '#090514');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 平台
-    for (let p of platforms) {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(p.x + 6, p.y + 12, p.w, p.h);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = '#aa77ff'; ctx.lineWidth = 2;
-        ctx.strokeRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.fillRect(p.x, p.y, p.w, 4);
-    }
-
-    // 主地板
-    ctx.fillStyle = '#17122b';
-    ctx.fillRect(80, 540, 1120, 110);
-    ctx.strokeStyle = '#8855cc'; ctx.lineWidth = 3;
-    ctx.strokeRect(80, 540, 1120, 110);
-
-    // 岩漿地板
-    let lavaGrad = ctx.createLinearGradient(0, LAVA_Y, 0, canvas.height);
-    lavaGrad.addColorStop(0, '#ff2200');
-    lavaGrad.addColorStop(0.5, '#ff5500');
-    lavaGrad.addColorStop(1, '#aa0000');
-    ctx.fillStyle = lavaGrad;
-    ctx.fillRect(0, LAVA_Y, canvas.width, canvas.height - LAVA_Y);
-
-    ctx.fillStyle = '#ffff33';
-    let time = Date.now() * 0.005;
-    for (let i = 100; i < canvas.width; i += 180) {
-        let bx = i + Math.sin(time + i) * 30;
-        let by = LAVA_Y + 15 + Math.cos(time * 2 + i) * 10;
-        ctx.beginPath();
-        ctx.arc(bx, by, 8 + Math.sin(time)*3, 0, Math.PI*2);
-        ctx.fill();
-    }
-}
-
-function gameLoop() {
-    ctx.save();
-    // 螢幕震動特效處理
-    if (screenShake > 0) {
-        screenShake--;
-        let sx = (Math.random() - 0.5) * screenShake;
-        let sy = (Math.random() - 0.5) * screenShake;
-        ctx.translate(sx, sy);
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (isPlaying) {
-        p1.update(p2);
-        p2.update(p1);
-        particles.update();
-    }
-
-    drawStage();
-    particles.draw(ctx);
-    p1.draw(ctx);
-    p2.draw(ctx);
-
-    ctx.restore();
-    requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
+// 視窗縮放適應
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 
 </body>
