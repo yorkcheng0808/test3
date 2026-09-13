@@ -2,12 +2,12 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>3D Arena LightSaber Smash</title>
+    <title>2.5D Smash Arena - Ultimate AI & Controller</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #000;
+            background: #050510;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -17,7 +17,7 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 50px;
+            gap: 60px;
             color: #fff;
             font-weight: bold;
             text-shadow: 0 0 10px rgba(0,0,0,0.8);
@@ -25,24 +25,32 @@
             z-index: 10;
         }
         .hud-box {
-            background: rgba(20, 20, 30, 0.7);
-            padding: 10px 20px;
+            background: rgba(20, 20, 30, 0.8);
+            padding: 10px 25px;
             border-radius: 8px;
             border: 2px solid #555;
             text-align: center;
         }
-        #cooldown-bar {
+        #cooldown-container {
             position: absolute;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             width: 300px;
-            height: 20px;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid #fff;
-            border-radius: 10px;
-            overflow: hidden;
+            text-align: center;
             z-index: 10;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        #cooldown-bar {
+            width: 100%;
+            height: 16px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 5px;
         }
         #cooldown-fill {
             width: 100%;
@@ -52,13 +60,14 @@
         }
         #instructions {
             position: absolute;
-            bottom: 60px;
+            bottom: 65px;
             left: 50%;
             transform: translateX(-50%);
-            color: #aaa;
-            font-size: 14px;
+            color: #bbb;
+            font-size: 13px;
             z-index: 10;
             text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
         }
     </style>
     <!-- 引入 Three.js -->
@@ -69,30 +78,33 @@
     <div id="ui">
         <div class="hud-box" style="border-color: #ff3344;">
             <div>P1 (玩家) 生命值</div>
-            <div id="p1-hp" style="font-size: 24px; color: #ff3344;">100</div>
+            <div id="p1-hp" style="font-size: 26px; color: #ff3344;">100</div>
         </div>
         <div class="hud-box" style="border-color: #00d2ff;">
-            <div>P2 (AI 敵手) 生命值</div>
-            <div id="p2-hp" style="font-size: 24px; color: #00d2ff;">100</div>
+            <div>P2 (聰明 AI) 生命值</div>
+            <div id="p2-hp" style="font-size: 26px; color: #00d2ff;">100</div>
         </div>
     </div>
 
-    <div id="instructions">【控制方式】鍵盤 A/D 移動, W 跳躍, J 揮劍, K 發射劍刺 | 或使用手柄：左搖桿移動, A鍵發射劍刺</div>
+    <div id="instructions">【控制方式】左搖桿: 移動/跳躍/蹲下 | 右搖桿: 360度瞄準光劍 | A鍵: 發射劍刺 (5秒冷卻) | 鍵盤: A/D 移動, W 跳, S 蹲, J 揮劍, K 發射劍刺</div>
 
-    <div id="cooldown-bar">
-        <div id="cooldown-fill"></div>
+    <div id="cooldown-container">
+        <div>劍刺技能冷卻 (A 鍵 / K 鍵)</div>
+        <div id="cooldown-bar">
+            <div id="cooldown-fill"></div>
+        </div>
     </div>
 
 <script>
-// --- 遊戲初始化與場景設定 ---
+// --- 2.5D 場景與攝影機初始化 ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050510);
-scene.fog = new THREE.FogExp2(0x050510, 0.015);
+scene.background = new THREE.Color(0x060612);
+scene.fog = new THREE.FogExp2(0x060612, 0.012);
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-// 視角拉到最大以完整看到雙方與岩漿邊緣縫隙
-camera.position.set(0, 22, 32);
-camera.lookAt(0, 0, 0);
+// 2.5D 側面視角：相機拉在正前方，微調高度與視野以看見雙方與邊緣縫隙
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 4, 32);
+camera.lookAt(0, 2, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -100,55 +112,60 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- 燈光設定 ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(20, 40, 20);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(10, 25, 20);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// --- 3D 競技場與邊緣縫隙、岩漿 ---
-// 外圍岩漿
-const lavaGeo = new THREE.PlaneGeometry(200, 200);
+// --- 2.5D 競技場地設計 (帶邊緣縫隙與下方岩漿) ---
+const lavaGeo = new THREE.PlaneGeometry(300, 300);
 const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
 const lavaMesh = new THREE.Mesh(lavaGeo, lavaMat);
 lavaMesh.rotation.x = -Math.PI / 2;
-lavaMesh.position.y = -5;
+lavaMesh.position.y = -8;
 scene.add(lavaMesh);
 
-// 主島嶼平台（帶有邊緣縫隙可以把人打下去）
-const arenaGeo = new THREE.BoxGeometry(24, 2, 24);
-const arenaMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.4 });
-const arena = new THREE.Mesh(arenaGeo, arenaMat);
-arena.position.y = -1;
-arena.receiveShadow = true;
-scene.add(arena);
+// 主地板 (中心平台，左右留有縫隙可掉下去)
+const mainFloorGeo = new THREE.BoxGeometry(22, 1.5, 6);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, roughness: 0.3 });
+const mainFloor = new THREE.Mesh(mainFloorGeo, floorMat);
+mainFloor.position.set(0, -1, 0);
+mainFloor.receiveShadow = true;
+scene.add(mainFloor);
 
-// 四塊邊緣小平台與縫隙
-const platforms = [];
-const pConfigs = [
-    { x: -15, z: 0 }, { x: 15, z: 0 }, { x: 0, z: -15 }, { x: 0, z: 15 }
+// 頂端與中段的 3 個可跳上去的板子障礙物
+const platforms = [
+    mainFloor,
+    // 左側高空板子
+    createPlatform(-7, 3.5, 5, 1.2),
+    // 右側高空板子
+    createPlatform(7, 3.5, 5, 1.2),
+    // 正中央頂端板子
+    createPlatform(0, 6.5, 4.5, 1.2)
 ];
-pConfigs.forEach(pos => {
-    const pGeo = new THREE.BoxGeometry(6, 1.5, 6);
-    const pMat = new THREE.MeshStandardMaterial({ color: 0x444466 });
-    const pMesh = new THREE.Mesh(pGeo, pMat);
-    pMesh.position.set(pos.x, -0.5, pos.z);
-    pMesh.receiveShadow = true;
-    scene.add(pMesh);
-    platforms.push(pMesh);
-});
+
+function createPlatform(x, y, w, h) {
+    const geo = new THREE.BoxGeometry(w, 0.6, 5);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3d3d5c, roughness: 0.4 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, 0);
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    return mesh;
+}
 
 // --- 角色與長光劍類別 ---
-class Fighter {
-    constructor(x, z, color, isAI = false) {
+class Fighter2D {
+    constructor(x, color, isAI = false) {
         this.isAI = isAI;
         this.hp = 100;
         this.mesh = new THREE.Group();
-        this.mesh.position.set(x, 0, z);
+        this.mesh.position.set(x, 1, 0);
 
-        // 身體
+        // 身體 (支援蹲下變矮)
         const bodyGeo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
         const bodyMat = new THREE.MeshStandardMaterial({ color: color });
         this.body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -159,121 +176,133 @@ class Fighter {
         // 頭部
         const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
         const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 2.4;
-        this.mesh.add(head);
+        this.head = new THREE.Mesh(headGeo, headMat);
+        this.head.position.y = 2.4;
+        this.mesh.add(this.head);
 
-        // 拿著的長長光劍
-        const saberGroup = new THREE.Group();
-        // 劍柄
-        const hiltGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8);
-        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        // 拿著的長長光劍群組 (支援右搖桿 360 度瞄準)
+        this.saberGroup = new THREE.Group();
+        const hiltGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.7);
+        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
         const hilt = new THREE.Mesh(hiltGeo, hiltMat);
-        hilt.position.y = 0.4;
-        saberGroup.add(hilt);
+        hilt.position.y = 0.35;
+        this.saberGroup.add(hilt);
 
-        // 長光劍刃
-        const bladeGeo = new THREE.CylinderGeometry(0.12, 0.12, 4.5);
+        const bladeGeo = new THREE.CylinderGeometry(0.11, 0.11, 4.2);
         const bladeMat = new THREE.MeshBasicMaterial({ color: color });
         this.bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
-        this.bladeMesh.position.y = 2.8;
-        saberGroup.add(this.bladeMesh);
+        this.bladeMesh.position.y = 2.6;
+        this.saberGroup.add(this.bladeMesh);
 
-        saberGroup.position.set(0.9, 1.0, 0.8);
-        saberGroup.rotation.x = Math.PI / 4;
-        this.saber = saberGroup;
-        this.mesh.add(saberGroup);
+        this.saberGroup.position.set(0.8, 1.2, 0);
+        this.mesh.add(this.saberGroup);
 
         scene.add(this.mesh);
 
         this.vx = 0;
-        this.vz = 0;
         this.vy = 0;
-        this.isGrounded = true;
-        this.speed = 0.15;
-        this.swordAngle = 0;
-        this.isSwinging = false;
-        
-        // 劍刺冷卻
+        this.isGrounded = false;
+        this.isCrouched = false;
+        this.speed = 0.16;
+        this.jumpForce = 0.32;
         this.spikeCooldown = 0;
+        this.aimAngle = 0;
     }
 
     update(opponent) {
         if (this.hp <= 0) return;
 
-        // 物理移動與重力
-        this.vy -= 0.015;
+        // 重力與位移
+        this.vy -= 0.014;
         this.mesh.position.y += this.vy;
         this.mesh.position.x += this.vx;
-        this.mesh.position.z += this.vz;
 
-        // 簡單地板與平台碰撞檢測 (若掉落小於 -4 則落入岩漿)
-        if (this.mesh.position.y < -4) {
+        // 掉落岩漿判定
+        if (this.mesh.position.y < -7) {
             this.hp = 0;
             return;
         }
 
-        // 簡易島嶼平台地面判定
-        if (this.mesh.position.y <= 0 && 
-            Math.abs(this.mesh.position.x) < 13 && 
-            Math.abs(this.mesh.position.z) < 13) {
-            this.mesh.position.y = 0;
-            this.vy = 0;
-            this.isGrounded = true;
-        }
+        // 平台與地面碰撞檢測 (2.5D 左右前後限制在 Z=0)
+        this.mesh.position.z = 0;
+        this.isGrounded = false;
 
-        // 殘影效果：生成殘影殘留物
-        if (Math.abs(this.vx) > 0.01 || Math.abs(this.vz) > 0.01 || this.isSwinging) {
+        platforms.forEach(p => {
+            const box = new THREE.Box3().setFromObject(p);
+            // 檢查是否降落踩在板子上
+            if (this.vy <= 0 && 
+                this.mesh.position.x >= box.min.x - 0.8 && 
+                this.mesh.position.x <= box.max.x + 0.8) {
+                
+                let surfaceY = box.max.y;
+                if (Math.abs(this.mesh.position.y - surfaceY) < 0.6) {
+                    this.mesh.position.y = surfaceY;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+            }
+        });
+
+        // 殘影效果
+        if (Math.abs(this.vx) > 0.02 || Math.abs(this.vy) > 0.05) {
             createTrail(this.mesh.position, this.body.material.color);
         }
 
-        // 減速
-        this.vx *= 0.85;
-        this.vz *= 0.85;
+        this.vx *= 0.8; // 摩擦力減速
 
-        // AI 邏輯
+        // 智慧 AI 玩家邏輯
         if (this.isAI) {
             let dx = p1.mesh.position.x - this.mesh.position.x;
-            let dz = p1.mesh.position.z - this.mesh.position.z;
-            let dist = Math.sqrt(dx*dx + dz*dz);
-            if (dist > 2) {
-                this.mesh.position.x += (dx / dist) * 0.06;
-                this.mesh.position.z += (dz / dist) * 0.06;
+            let dy = p1.mesh.position.y - this.mesh.position.y;
+            
+            // AI 自動左右移動追擊
+            if (Math.abs(dx) > 1.2) {
+                this.vx = Math.sign(dx) * (this.speed * 0.9);
             }
-            // AI 揮劍面向玩家
-            this.mesh.lookAt(p1.mesh.position);
+
+            // AI 自動跳上高空板子或對抗玩家
+            if (dy > 1.5 && this.isGrounded && Math.random() < 0.03) {
+                this.vy = this.jumpForce;
+            }
+
+            // AI 自動用右搖桿邏輯瞄準玩家
+            this.aimAngle = Math.atan2(dy, dx);
+            this.saberGroup.rotation.z = -this.aimAngle + Math.PI / 2;
+
+            // AI 隨機發射劍刺
+            if (this.spikeCooldown <= 0 && Math.abs(dx) < 12 && Math.random() < 0.02) {
+                fireSpike(this, p1);
+            }
         }
     }
 
-    swing() {
-        if (this.isSwinging) return;
-        this.isSwinging = true;
-        let t = 0;
-        let interval = setInterval(() => {
-            t += 0.2;
-            this.saber.rotation.z = Math.sin(t) * 1.5;
-            if (t > Math.PI) {
-                clearInterval(interval);
-                this.saber.rotation.z = 0;
-                this.isSwinging = false;
-            }
-        }, 20);
+    crouch(enable) {
+        this.isCrouched = enable;
+        if (enable) {
+            this.body.scale.set(1, 0.5, 1);
+            this.body.position.y = 0.55;
+            this.head.position.y = 1.3;
+        } else {
+            this.body.scale.set(1, 1, 1);
+            this.body.position.y = 1.1;
+            this.head.position.y = 2.4;
+        }
     }
 }
 
-const p1 = new Fighter(-6, 0, 0xff3344, false);
-const p2 = new Fighter(6, 0, 0x00d2ff, true);
+const p1 = new Fighter2D(-5, 0xff3344, false);
+const p2 = new Fighter2D(5, 0x00d2ff, true); // P2 升級為聰明 AI
 
-// --- 殘影特效系統 ---
+// --- 殘影特效 ---
 const trails = [];
 function createTrail(pos, color) {
     const geo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
-    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4 });
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.35 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(pos);
     mesh.position.y += 1.1;
     scene.add(mesh);
-    trails.push({ mesh: mesh, life: 15 });
+    trails.push({ mesh: mesh, life: 12 });
 }
 
 // --- 發射劍刺系統 ---
@@ -282,51 +311,72 @@ function fireSpike(fighter, target) {
     if (fighter.spikeCooldown > 0) return;
     fighter.spikeCooldown = 300; // 5秒冷卻 (60fps * 5)
 
-    const spikeGeo = new THREE.ConeGeometry(0.3, 2, 8);
+    const spikeGeo = new THREE.ConeGeometry(0.25, 2, 8);
     const spikeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
     const spike = new THREE.Mesh(spikeGeo, spikeMat);
     spike.position.copy(fighter.mesh.position);
     spike.position.y += 1.5;
 
-    // 計算朝向對手的方向向量
-    const dir = new THREE.Vector3().subVectors(target.mesh.position, fighter.mesh.position).normalize();
+    let dir;
+    if (fighter.isAI) {
+        dir = new THREE.Vector3().subVectors(target.mesh.position, fighter.mesh.position).normalize();
+    } else {
+        // 依照右搖桿瞄準角度或預設面向發射
+        let angle = fighter.aimAngle || 0;
+        dir = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0).normalize();
+    }
+
     spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    
     scene.add(spike);
-    spikes.push({ mesh: spike, dir: dir, speed: 0.4 });
+    spikes.push({ mesh: spike, dir: dir, speed: 0.45 });
 }
 
-// --- 輸入控制 (支援鍵盤與 Gamepad 搖桿) ---
+// --- 鍵盤與實體手把 (Gamepad) 控制對應 ---
 const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
 function handleInput() {
-    // 鍵盤控制 P1
+    // 鍵盤輔助 P1 控制
     if (keys['KeyA']) p1.vx = -p1.speed;
     if (keys['KeyD']) p1.vx = p1.speed;
-    if (keys['KeyW']) p1.vz = -p1.speed;
-    if (keys['KeyS']) p1.vz = p1.speed;
-    if (keys['KeyJ']) p1.swing();
+    if (keys['KeyW'] && p1.isGrounded) { p1.vy = p1.jumpForce; p1.isGrounded = false; }
+    if (keys['KeyS']) p1.crouch(true); else p1.crouch(false);
     if (keys['KeyK']) fireSpike(p1, p2);
 
-    // Gamepad 實體搖桿控制 (如 Switch Pro 手把)
+    // 實體搖桿控制 (對應您的 Switch Pro 手把)
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     if (gamepads[0]) {
         const gp = gamepads[0];
-        // 左搖桿移動
-        let ax = gp.axes[0];
-        let ay = gp.axes[1];
-        if (Math.abs(ax) > 0.1) p1.vx = ax * p1.speed;
-        if (Math.abs(ay) > 0.1) p1.vz = ay * p1.speed;
 
-        // A 鍵 (通常是 buttons[0] 或 buttons[1] 依瀏覽器而定，通常 Switch A 是右側下方的按鈕)
+        // 1. 左邊搖桿：控制移動與蹲下/跳躍
+        let leftStickX = gp.axes[0];
+        let leftStickY = gp.axes[1]; // 往下推代表向下/蹲下
+        if (Math.abs(leftStickX) > 0.15) {
+            p1.vx = leftStickX * p1.speed;
+        }
+        if (leftStickY > 0.5) {
+            p1.crouch(true);
+        } else if (!keys['KeyS']) {
+            p1.crouch(false);
+        }
+        // 左搖桿往上推或按 B 鍵跳躍
+        if ((leftStickY < -0.6 || (gp.buttons[1] && gp.buttons[1].pressed)) && p1.isGrounded) {
+            p1.vy = p1.jumpForce;
+            p1.isGrounded = false;
+        }
+
+        // 2. 右邊搖桿：360度瞄準光劍
+        let rightStickX = gp.axes[2] !== undefined ? gp.axes[2] : gp.axes[2];
+        let rightStickY = gp.axes[3] !== undefined ? gp.axes[3] : gp.axes[3];
+        if (Math.abs(rightStickX) > 0.15 || Math.abs(rightStickY) > 0.15) {
+            p1.aimAngle = Math.atan2(-rightStickY, rightStickX);
+            p1.saberGroup.rotation.z = -p1.aimAngle + Math.PI / 2;
+        }
+
+        // 3. 按下 A 鍵 (通常是 buttons[0])：發射劍刺
         if (gp.buttons[0] && gp.buttons[0].pressed) {
             fireSpike(p1, p2);
-        }
-        // X 鍵或 B 鍵揮劍
-        if (gp.buttons[1] && gp.buttons[1].pressed) {
-            p1.swing();
         }
     }
 }
@@ -340,40 +390,38 @@ function animate() {
     p1.update(p2);
     p2.update(p1);
 
-    // 更新劍刺冷卻計數與介面
+    // 冷卻計數更新
     if (p1.spikeCooldown > 0) p1.spikeCooldown--;
     let cdPercent = (p1.spikeCooldown / 300) * 100;
     document.getElementById('cooldown-fill').style.width = (100 - cdPercent) + '%';
     document.getElementById('cooldown-fill').style.background = p1.spikeCooldown === 0 ? '#00ffcc' : '#ffaa00';
 
-    // 更新劍刺飛行與碰撞
+    // 劍刺移動與碰撞檢測
     for (let i = spikes.length - 1; i >= 0; i--) {
         let s = spikes[i];
         s.mesh.position.addScaledVector(s.dir, s.speed);
 
-        // 碰撞 P2 檢測
+        // 擊中 P2
         if (s.mesh.position.distanceTo(p2.mesh.position) < 2) {
             p2.hp -= 25;
-            // 擊飛效果
-            p2.vx += s.dir.x * 0.8;
-            p2.vz += s.dir.z * 0.8;
+            p2.vx += s.dir.x * 0.9;
+            p2.vy += 0.2;
             scene.remove(s.mesh);
             spikes.splice(i, 1);
             continue;
         }
 
-        // 超出範圍移除
         if (s.mesh.position.length() > 60) {
             scene.remove(s.mesh);
             spikes.splice(i, 1);
         }
     }
 
-    // 更新殘影特效
+    // 殘影漸隱
     for (let i = trails.length - 1; i >= 0; i--) {
         let t = trails[i];
         t.life--;
-        t.mesh.material.opacity -= 0.03;
+        t.mesh.material.opacity -= 0.035;
         if (t.life <= 0) {
             scene.remove(t.mesh);
             trails.splice(i, 1);
@@ -389,7 +437,7 @@ function animate() {
 
 animate();
 
-// 視窗縮放適應
+// 視窗自適應
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
