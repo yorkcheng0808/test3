@@ -2,12 +2,12 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>2.5D Smash Arena - Ultimate AI & Controller</title>
+    <title>2.5D Smash Arena - 4 Skills & Custom Limbs</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #050510;
+            background: #030308;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -20,90 +20,83 @@
             gap: 60px;
             color: #fff;
             font-weight: bold;
-            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            text-shadow: 0 0 10px rgba(0,0,0,0.9);
             pointer-events: none;
             z-index: 10;
         }
         .hud-box {
-            background: rgba(20, 20, 30, 0.8);
+            background: rgba(15, 15, 25, 0.85);
             padding: 10px 25px;
             border-radius: 8px;
             border: 2px solid #555;
             text-align: center;
         }
-        #cooldown-container {
+        #skill-hud {
             position: absolute;
-            bottom: 30px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
-            width: 300px;
-            text-align: center;
+            display: flex;
+            gap: 15px;
             z-index: 10;
+        }
+        .skill-box {
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #00ffcc;
+            border-radius: 8px;
+            padding: 8px 12px;
             color: #fff;
             font-size: 12px;
-            font-weight: bold;
+            text-align: center;
+            width: 90px;
         }
-        #cooldown-bar {
-            width: 100%;
-            height: 16px;
-            background: rgba(0,0,0,0.7);
-            border: 2px solid #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 5px;
-        }
-        #cooldown-fill {
-            width: 100%;
-            height: 100%;
-            background: #00ffcc;
-            transition: width 0.1s linear;
-        }
+        .skill-box.cd { border-color: #ff3344; opacity: 0.7; }
         #instructions {
             position: absolute;
-            bottom: 65px;
+            bottom: 90px;
             left: 50%;
             transform: translateX(-50%);
-            color: #bbb;
-            font-size: 13px;
+            color: #aaa;
+            font-size: 12px;
             z-index: 10;
             text-align: center;
             text-shadow: 0 2px 4px rgba(0,0,0,0.9);
         }
     </style>
-    <!-- 引入 Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="ui">
         <div class="hud-box" style="border-color: #ff3344;">
-            <div>P1 (玩家) 生命值</div>
+            <div>P1 玩家生命值</div>
             <div id="p1-hp" style="font-size: 26px; color: #ff3344;">100</div>
         </div>
         <div class="hud-box" style="border-color: #00d2ff;">
-            <div>P2 (聰明 AI) 生命值</div>
+            <div>P2 聰明 AI 生命值</div>
             <div id="p2-hp" style="font-size: 26px; color: #00d2ff;">100</div>
         </div>
     </div>
 
-    <div id="instructions">【控制方式】左搖桿: 移動/跳躍/蹲下 | 右搖桿: 360度瞄準光劍 | A鍵: 發射劍刺 (5秒冷卻) | 鍵盤: A/D 移動, W 跳, S 蹲, J 揮劍, K 發射劍刺</div>
+    <div id="instructions">
+        左搖桿: 移動/跳躍/蹲下 | 右搖桿: 360度瞄準 | A鍵: 劍刺 | X鍵: 爪擊旋風 | Y鍵: 烈焰斬 | B鍵: 紫電衝刺<br>
+        (鍵盤對應: A/D移動, W跳, S蹲, K發射劍刺, L爪擊, I烈焰斬, U紫電衝刺)
+    </div>
 
-    <div id="cooldown-container">
-        <div>劍刺技能冷卻 (A 鍵 / K 鍵)</div>
-        <div id="cooldown-bar">
-            <div id="cooldown-fill"></div>
-        </div>
+    <div id="skill-hud">
+        <div class="skill-box" id="s1-box"><b>A 鍵</b><br>劍刺 (5s)</div>
+        <div class="skill-box" id="s2-box"><b>X 鍵</b><br>爪擊 (3s)</div>
+        <div class="skill-box" id="s3-box"><b>Y 鍵</b><br>烈焰 (4s)</div>
+        <div class="skill-box" id="s4-box"><b>B 鍵</b><br>紫電 (6s)</div>
     </div>
 
 <script>
-// --- 2.5D 場景與攝影機初始化 ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060612);
-scene.fog = new THREE.FogExp2(0x060612, 0.012);
+scene.background = new THREE.Color(0x04040a);
+scene.fog = new THREE.FogExp2(0x04040a, 0.012);
 
-// 2.5D 側面視角：相機拉在正前方，微調高度與視野以看見雙方與邊緣縫隙
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 4, 32);
+camera.position.set(0, 4, 34);
 camera.lookAt(0, 2, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -111,16 +104,14 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// --- 燈光設定 ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
 dirLight.position.set(10, 25, 20);
-dirLight.castShadow = true;
 scene.add(dirLight);
 
-// --- 2.5D 競技場地設計 (帶邊緣縫隙與下方岩漿) ---
+// 岩漿與平台
 const lavaGeo = new THREE.PlaneGeometry(300, 300);
 const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
 const lavaMesh = new THREE.Mesh(lavaGeo, lavaMat);
@@ -128,73 +119,72 @@ lavaMesh.rotation.x = -Math.PI / 2;
 lavaMesh.position.y = -8;
 scene.add(lavaMesh);
 
-// 主地板 (中心平台，左右留有縫隙可掉下去)
 const mainFloorGeo = new THREE.BoxGeometry(22, 1.5, 6);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, roughness: 0.3 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x181824, roughness: 0.3 });
 const mainFloor = new THREE.Mesh(mainFloorGeo, floorMat);
 mainFloor.position.set(0, -1, 0);
-mainFloor.receiveShadow = true;
 scene.add(mainFloor);
 
-// 頂端與中段的 3 個可跳上去的板子障礙物
 const platforms = [
     mainFloor,
-    // 左側高空板子
-    createPlatform(-7, 3.5, 5, 1.2),
-    // 右側高空板子
-    createPlatform(7, 3.5, 5, 1.2),
-    // 正中央頂端板子
-    createPlatform(0, 6.5, 4.5, 1.2)
+    createPlatform(-7, 3.5, 5),
+    createPlatform(7, 3.5, 5),
+    createPlatform(0, 6.5, 4.5)
 ];
 
-function createPlatform(x, y, w, h) {
+function createPlatform(x, y, w) {
     const geo = new THREE.BoxGeometry(w, 0.6, 5);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x3d3d5c, roughness: 0.4 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x2d2d44 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, 0);
-    mesh.receiveShadow = true;
     scene.add(mesh);
     return mesh;
 }
 
-// --- 角色與長光劍類別 ---
-class Fighter2D {
+// 角色類別：手腳由「兩個方塊」組成，持有長光劍與特效
+class FighterCustom {
     constructor(x, color, isAI = false) {
         this.isAI = isAI;
         this.hp = 100;
         this.mesh = new THREE.Group();
         this.mesh.position.set(x, 1, 0);
 
-        // 身體 (支援蹲下變矮)
-        const bodyGeo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
+        // 軀幹
+        const bodyGeo = new THREE.BoxGeometry(1.2, 2.0, 0.7);
         const bodyMat = new THREE.MeshStandardMaterial({ color: color });
         this.body = new THREE.Mesh(bodyGeo, bodyMat);
-        this.body.position.y = 1.1;
-        this.body.castShadow = true;
+        this.body.position.y = 1.2;
         this.mesh.add(this.body);
 
         // 頭部
         const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xe0c090 });
         this.head = new THREE.Mesh(headGeo, headMat);
         this.head.position.y = 2.4;
         this.mesh.add(this.head);
 
-        // 拿著的長長光劍群組 (支援右搖桿 360 度瞄準)
+        // 四肢設定：每隻手與腳由「兩個方塊」組成 (上節與下節)
+        this.limbs = {};
+        this.limbs.leftArmUp = this.createLimbPart(0.4, 0.8);
+        this.limbs.leftArmLow = this.createLimbPart(0.4, 0.8);
+        this.limbs.rightArmUp = this.createLimbPart(0.4, 0.8);
+        this.limbs.rightArmLow = this.createLimbPart(0.4, 0.8);
+        
+        this.limbs.leftLegUp = this.createLimbPart(0.45, 0.9);
+        this.limbs.leftLegLow = this.createLimbPart(0.45, 0.9);
+        this.limbs.rightLegUp = this.createLimbPart(0.45, 0.9);
+        this.limbs.rightLegLow = this.createLimbPart(0.45, 0.9);
+
+        // 長光劍武器
         this.saberGroup = new THREE.Group();
-        const hiltGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.7);
-        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        const hilt = new THREE.Mesh(hiltGeo, hiltMat);
+        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), new THREE.MeshStandardMaterial({ color: 0x333333 }));
         hilt.position.y = 0.35;
         this.saberGroup.add(hilt);
-
-        const bladeGeo = new THREE.CylinderGeometry(0.11, 0.11, 4.2);
-        const bladeMat = new THREE.MeshBasicMaterial({ color: color });
-        this.bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
-        this.bladeMesh.position.y = 2.6;
-        this.saberGroup.add(this.bladeMesh);
-
-        this.saberGroup.position.set(0.8, 1.2, 0);
+        
+        const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.5), new THREE.MeshBasicMaterial({ color: color }));
+        blade.position.y = 2.6;
+        this.saberGroup.add(blade);
+        this.saberGroup.position.set(0.7, 1.4, 0);
         this.mesh.add(this.saberGroup);
 
         scene.add(this.mesh);
@@ -202,38 +192,38 @@ class Fighter2D {
         this.vx = 0;
         this.vy = 0;
         this.isGrounded = false;
-        this.isCrouched = false;
-        this.speed = 0.16;
-        this.jumpForce = 0.32;
-        this.spikeCooldown = 0;
+        this.speed = 0.15;
+        this.jumpForce = 0.31;
         this.aimAngle = 0;
+
+        // 4個技能冷卻計時器
+        this.cooldowns = { s1: 0, s2: 0, s3: 0, s4: 0 };
+    }
+
+    createLimbPart(w, h) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: 0x11111a }));
+        this.mesh.add(mesh);
+        return mesh;
     }
 
     update(opponent) {
         if (this.hp <= 0) return;
 
-        // 重力與位移
         this.vy -= 0.014;
         this.mesh.position.y += this.vy;
         this.mesh.position.x += this.vx;
 
-        // 掉落岩漿判定
         if (this.mesh.position.y < -7) {
             this.hp = 0;
             return;
         }
 
-        // 平台與地面碰撞檢測 (2.5D 左右前後限制在 Z=0)
         this.mesh.position.z = 0;
         this.isGrounded = false;
 
         platforms.forEach(p => {
             const box = new THREE.Box3().setFromObject(p);
-            // 檢查是否降落踩在板子上
-            if (this.vy <= 0 && 
-                this.mesh.position.x >= box.min.x - 0.8 && 
-                this.mesh.position.x <= box.max.x + 0.8) {
-                
+            if (this.vy <= 0 && this.mesh.position.x >= box.min.x - 0.8 && this.mesh.position.x <= box.max.x + 0.8) {
                 let surfaceY = box.max.y;
                 if (Math.abs(this.mesh.position.y - surfaceY) < 0.6) {
                     this.mesh.position.y = surfaceY;
@@ -243,192 +233,210 @@ class Fighter2D {
             }
         });
 
-        // 殘影效果
+        // 殘影特效
         if (Math.abs(this.vx) > 0.02 || Math.abs(this.vy) > 0.05) {
             createTrail(this.mesh.position, this.body.material.color);
         }
 
-        this.vx *= 0.8; // 摩擦力減速
+        this.vx *= 0.8;
 
-        // 智慧 AI 玩家邏輯
+        // 減少技能冷卻
+        for (let k in this.cooldowns) {
+            if (this.cooldowns[k] > 0) this.cooldowns[k]--;
+        }
+
+        // 聰明 AI 邏輯與 4 技能釋放
         if (this.isAI) {
             let dx = p1.mesh.position.x - this.mesh.position.x;
             let dy = p1.mesh.position.y - this.mesh.position.y;
             
-            // AI 自動左右移動追擊
-            if (Math.abs(dx) > 1.2) {
-                this.vx = Math.sign(dx) * (this.speed * 0.9);
-            }
+            if (Math.abs(dx) > 1.5) this.vx = Math.sign(dx) * (this.speed * 0.9);
+            if (dy > 1.5 && this.isGrounded && Math.random() < 0.03) this.vy = this.jumpForce;
 
-            // AI 自動跳上高空板子或對抗玩家
-            if (dy > 1.5 && this.isGrounded && Math.random() < 0.03) {
-                this.vy = this.jumpForce;
-            }
-
-            // AI 自動用右搖桿邏輯瞄準玩家
             this.aimAngle = Math.atan2(dy, dx);
             this.saberGroup.rotation.z = -this.aimAngle + Math.PI / 2;
 
-            // AI 隨機發射劍刺
-            if (this.spikeCooldown <= 0 && Math.abs(dx) < 12 && Math.random() < 0.02) {
-                fireSpike(this, p1);
+            // AI 隨機施放 4 個技能
+            if (Math.abs(dx) < 14) {
+                if (this.cooldowns.s1 === 0 && Math.random() < 0.025) { useSkill(this, p1, 1); }
+                else if (this.cooldowns.s2 === 0 && Math.random() < 0.02) { useSkill(this, p1, 2); }
+                else if (this.cooldowns.s3 === 0 && Math.random() < 0.015) { useSkill(this, p1, 3); }
+                else if (this.cooldowns.s4 === 0 && Math.random() < 0.01) { useSkill(this, p1, 4); }
             }
-        }
-    }
-
-    crouch(enable) {
-        this.isCrouched = enable;
-        if (enable) {
-            this.body.scale.set(1, 0.5, 1);
-            this.body.position.y = 0.55;
-            this.head.position.y = 1.3;
-        } else {
-            this.body.scale.set(1, 1, 1);
-            this.body.position.y = 1.1;
-            this.head.position.y = 2.4;
         }
     }
 }
 
-const p1 = new Fighter2D(-5, 0xff3344, false);
-const p2 = new Fighter2D(5, 0x00d2ff, true); // P2 升級為聰明 AI
+const p1 = new FighterCustom(-5, 0xff3344, false);
+const p2 = new FighterCustom(5, 0x00d2ff, true);
 
-// --- 殘影特效 ---
+// 殘影特效系統
 const trails = [];
 function createTrail(pos, color) {
-    const geo = new THREE.BoxGeometry(1.2, 2.2, 0.8);
-    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.35 });
+    const geo = new THREE.BoxGeometry(1.2, 2.0, 0.7);
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(pos);
-    mesh.position.y += 1.1;
+    mesh.position.y += 1.2;
     scene.add(mesh);
     trails.push({ mesh: mesh, life: 12 });
 }
 
-// --- 發射劍刺系統 ---
-const spikes = [];
-function fireSpike(fighter, target) {
-    if (fighter.spikeCooldown > 0) return;
-    fighter.spikeCooldown = 300; // 5秒冷卻 (60fps * 5)
+// 特效與技能實現 (+4個技能)
+const skillEffects = [];
+function useSkill(caster, target, skillId) {
+    if (caster.cooldowns['s' + skillId] > 0) return;
 
-    const spikeGeo = new THREE.ConeGeometry(0.25, 2, 8);
-    const spikeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-    const spike = new THREE.Mesh(spikeGeo, spikeMat);
-    spike.position.copy(fighter.mesh.position);
-    spike.position.y += 1.5;
-
-    let dir;
-    if (fighter.isAI) {
-        dir = new THREE.Vector3().subVectors(target.mesh.position, fighter.mesh.position).normalize();
-    } else {
-        // 依照右搖桿瞄準角度或預設面向發射
-        let angle = fighter.aimAngle || 0;
-        dir = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0).normalize();
+    if (skillId === 1) {
+        // 技能 1：藍色劍刺 (5秒冷卻)
+        caster.cooldowns.s1 = 300;
+        createProjectile(caster, target, 0x00ffff, 0.45, 25);
+    } else if (skillId === 2) {
+        // 技能 2：爪擊旋風斬 (3秒冷卻)
+        caster.cooldowns.s2 = 180;
+        createSlashEffect(caster.mesh.position, 0x00ffcc, 3.5);
+        if (caster.mesh.position.distanceTo(target.mesh.position) < 4) {
+            target.hp -= 15;
+            target.vx += (caster.isAI ? -0.5 : 0.5);
+        }
+    } else if (skillId === 3) {
+        // 技能 3：烈焰十字斬 (4秒冷卻)
+        caster.cooldowns.s3 = 240;
+        createSlashEffect(caster.mesh.position, 0xff5500, 5.0);
+        if (caster.mesh.position.distanceTo(target.mesh.position) < 5) {
+            target.hp -= 25;
+            target.vy += 0.3;
+        }
+    } else if (skillId === 4) {
+        // 技能 4：紫電高速衝刺 (6秒冷卻)
+        caster.cooldowns.s4 = 360;
+        caster.vx = (target.mesh.position.x > caster.mesh.position.x ? 1 : -1) * 1.2;
+        createSlashEffect(caster.mesh.position, 0xaa00ff, 6.0);
+        if (caster.mesh.position.distanceTo(target.mesh.position) < 4.5) {
+            target.hp -= 30;
+            target.vx += caster.vx * 0.8;
+        }
     }
-
-    spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    scene.add(spike);
-    spikes.push({ mesh: spike, dir: dir, speed: 0.45 });
 }
 
-// --- 鍵盤與實體手把 (Gamepad) 控制對應 ---
+// 遠程劍刺投射物
+const projectiles = [];
+function createProjectile(caster, target, color, speed, dmg) {
+    const geo = new THREE.ConeGeometry(0.25, 2, 8);
+    const mat = new THREE.MeshBasicMaterial({ color: color });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(caster.mesh.position);
+    mesh.position.y += 1.5;
+
+    let dir = new THREE.Vector3().subVectors(target.mesh.position, caster.mesh.position).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    scene.add(mesh);
+    projectiles.push({ mesh: mesh, dir: dir, speed: speed, dmg: dmg, target: target });
+}
+
+// 刀光/爪擊特效殘影
+function createSlashEffect(pos, color, scale) {
+    const geo = new THREE.RingGeometry(scale * 0.6, scale, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.position.y += 1.5;
+    mesh.rotation.x = Math.PI / 2;
+    scene.add(mesh);
+    skillEffects.push({ mesh: mesh, life: 15 });
+}
+
+// 輸入控制 (鍵盤與手把 A, X, Y, B 鍵)
 const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
 function handleInput() {
-    // 鍵盤輔助 P1 控制
     if (keys['KeyA']) p1.vx = -p1.speed;
     if (keys['KeyD']) p1.vx = p1.speed;
     if (keys['KeyW'] && p1.isGrounded) { p1.vy = p1.jumpForce; p1.isGrounded = false; }
-    if (keys['KeyS']) p1.crouch(true); else p1.crouch(false);
-    if (keys['KeyK']) fireSpike(p1, p2);
+    if (keys['KeyK']) useSkill(p1, p2, 1);
+    if (keys['KeyL']) useSkill(p1, p2, 2);
+    if (keys['KeyI']) useSkill(p1, p2, 3);
+    if (keys['KeyU']) useSkill(p1, p2, 4);
 
-    // 實體搖桿控制 (對應您的 Switch Pro 手把)
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     if (gamepads[0]) {
         const gp = gamepads[0];
-
-        // 1. 左邊搖桿：控制移動與蹲下/跳躍
-        let leftStickX = gp.axes[0];
-        let leftStickY = gp.axes[1]; // 往下推代表向下/蹲下
-        if (Math.abs(leftStickX) > 0.15) {
-            p1.vx = leftStickX * p1.speed;
-        }
-        if (leftStickY > 0.5) {
-            p1.crouch(true);
-        } else if (!keys['KeyS']) {
-            p1.crouch(false);
-        }
-        // 左搖桿往上推或按 B 鍵跳躍
-        if ((leftStickY < -0.6 || (gp.buttons[1] && gp.buttons[1].pressed)) && p1.isGrounded) {
+        let lx = gp.axes[0];
+        let ly = gp.axes[1];
+        if (Math.abs(lx) > 0.15) p1.vx = lx * p1.speed;
+        if ((ly < -0.6 || (gp.buttons[1] && gp.buttons[1].pressed)) && p1.isGrounded) {
             p1.vy = p1.jumpForce;
             p1.isGrounded = false;
         }
 
-        // 2. 右邊搖桿：360度瞄準光劍
-        let rightStickX = gp.axes[2] !== undefined ? gp.axes[2] : gp.axes[2];
-        let rightStickY = gp.axes[3] !== undefined ? gp.axes[3] : gp.axes[3];
-        if (Math.abs(rightStickX) > 0.15 || Math.abs(rightStickY) > 0.15) {
-            p1.aimAngle = Math.atan2(-rightStickY, rightStickX);
+        let rx = gp.axes[2], ry = gp.axes[3];
+        if (Math.abs(rx) > 0.15 || Math.abs(ry) > 0.15) {
+            p1.aimAngle = Math.atan2(-ry, rx);
             p1.saberGroup.rotation.z = -p1.aimAngle + Math.PI / 2;
         }
 
-        // 3. 按下 A 鍵 (通常是 buttons[0])：發射劍刺
-        if (gp.buttons[0] && gp.buttons[0].pressed) {
-            fireSpike(p1, p2);
-        }
+        // 4個技能按鈕對應手把 (A=0, X=2, Y=3, B=1)
+        if (gp.buttons[0] && gp.buttons[0].pressed) useSkill(p1, p2, 1); // A鍵: 劍刺
+        if (gp.buttons[2] && gp.buttons[2].pressed) useSkill(p1, p2, 2); // X鍵: 爪擊
+        if (gp.buttons[3] && gp.buttons[3].pressed) useSkill(p1, p2, 3); // Y鍵: 烈焰斬
+        if (gp.buttons[1] && gp.buttons[1].pressed) useSkill(p1, p2, 4); // B鍵: 紫電衝刺
     }
 }
 
-// --- 遊戲主循環 ---
 function animate() {
     requestAnimationFrame(animate);
-
     handleInput();
 
     p1.update(p2);
     p2.update(p1);
 
-    // 冷卻計數更新
-    if (p1.spikeCooldown > 0) p1.spikeCooldown--;
-    let cdPercent = (p1.spikeCooldown / 300) * 100;
-    document.getElementById('cooldown-fill').style.width = (100 - cdPercent) + '%';
-    document.getElementById('cooldown-fill').style.background = p1.spikeCooldown === 0 ? '#00ffcc' : '#ffaa00';
+    // 更新技能介面冷卻狀態
+    document.getElementById('s1-box').className = 'skill-box ' + (p1.cooldowns.s1 > 0 ? 'cd' : '');
+    document.getElementById('s2-box').className = 'skill-box ' + (p1.cooldowns.s2 > 0 ? 'cd' : '');
+    document.getElementById('s3-box').className = 'skill-box ' + (p1.cooldowns.s3 > 0 ? 'cd' : '');
+    document.getElementById('s4-box').className = 'skill-box ' + (p1.cooldowns.s4 > 0 ? 'cd' : '');
 
-    // 劍刺移動與碰撞檢測
-    for (let i = spikes.length - 1; i >= 0; i--) {
-        let s = spikes[i];
-        s.mesh.position.addScaledVector(s.dir, s.speed);
-
-        // 擊中 P2
-        if (s.mesh.position.distanceTo(p2.mesh.position) < 2) {
-            p2.hp -= 25;
-            p2.vx += s.dir.x * 0.9;
-            p2.vy += 0.2;
-            scene.remove(s.mesh);
-            spikes.splice(i, 1);
+    // 更新投射物
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        let p = projectiles[i];
+        p.mesh.position.addScaledVector(p.dir, p.speed);
+        if (p.mesh.position.distanceTo(p.target.mesh.position) < 2) {
+            p.target.hp -= p.dmg;
+            scene.remove(p.mesh);
+            projectiles.splice(i, 1);
             continue;
         }
-
-        if (s.mesh.position.length() > 60) {
-            scene.remove(s.mesh);
-            spikes.splice(i, 1);
+        if (p.mesh.position.length() > 50) {
+            scene.remove(p.mesh);
+            projectiles.splice(i, 1);
         }
     }
 
-    // 殘影漸隱
+    // 更新技能特效殘影
+    for (let i = skillEffects.length - 1; i >= 0; i--) {
+        let eff = skillEffects[i];
+        eff.life--;
+        eff.mesh.scale.addScalar(0.1);
+        eff.mesh.material.opacity -= 0.06;
+        if (eff.life <= 0) {
+            scene.remove(eff.mesh);
+            skillEffects.splice(i, 1);
+        }
+    }
+
+    // 更新身體殘影
     for (let i = trails.length - 1; i >= 0; i--) {
         let t = trails[i];
         t.life--;
-        t.mesh.material.opacity -= 0.035;
+        t.mesh.material.opacity -= 0.03;
         if (t.life <= 0) {
             scene.remove(t.mesh);
             trails.splice(i, 1);
         }
     }
 
-    // 更新 UI 血量
     document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
     document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
 
@@ -437,7 +445,6 @@ function animate() {
 
 animate();
 
-// 視窗自適應
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
