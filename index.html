@@ -1,456 +1,723 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>2.5D Smash Arena - 4 Skills & Custom Limbs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特斯拉究極擬真駕駛模擬器 (Tesla Model 3 Highland)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
+        body, html {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            background: #030308;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #030712;
+            font-family: 'Inter', sans-serif;
             user-select: none;
+            -webkit-user-select: none;
         }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 60px;
-            color: #fff;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(0,0,0,0.9);
-            pointer-events: none;
-            z-index: 10;
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
-        .hud-box {
-            background: rgba(15, 15, 25, 0.85);
-            padding: 10px 25px;
-            border-radius: 8px;
-            border: 2px solid #555;
-            text-align: center;
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
         }
-        #skill-hud {
-            position: absolute;
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 15px;
-            z-index: 10;
+        .glow-text {
+            text-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
         }
-        .skill-box {
-            background: rgba(0,0,0,0.7);
-            border: 2px solid #00ffcc;
-            border-radius: 8px;
-            padding: 8px 12px;
-            color: #fff;
-            font-size: 12px;
-            text-align: center;
-            width: 90px;
-        }
-        .skill-box.cd { border-color: #ff3344; opacity: 0.7; }
-        #instructions {
-            position: absolute;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #aaa;
-            font-size: 12px;
-            z-index: 10;
-            text-align: center;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+        .controller-btn-active {
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border-color: #f87171 !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+            transform: scale(0.95);
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body>
+<body class="text-slate-100">
 
-    <div id="ui">
-        <div class="hud-box" style="border-color: #ff3344;">
-            <div>P1 玩家生命值</div>
-            <div id="p1-hp" style="font-size: 26px; color: #ff3344;">100</div>
-        </div>
-        <div class="hud-box" style="border-color: #00d2ff;">
-            <div>P2 聰明 AI 生命值</div>
-            <div id="p2-hp" style="font-size: 26px; color: #00d2ff;">100</div>
-        </div>
-    </div>
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
 
-    <div id="instructions">
-        左搖桿: 移動/跳躍/蹲下 | 右搖桿: 360度瞄準 | A鍵: 劍刺 | X鍵: 爪擊旋風 | Y鍵: 烈焰斬 | B鍵: 紫電衝刺<br>
-        (鍵盤對應: A/D移動, W跳, S蹲, K發射劍刺, L爪擊, I烈焰斬, U紫電衝刺)
-    </div>
-
-    <div id="skill-hud">
-        <div class="skill-box" id="s1-box"><b>A 鍵</b><br>劍刺 (5s)</div>
-        <div class="skill-box" id="s2-box"><b>X 鍵</b><br>爪擊 (3s)</div>
-        <div class="skill-box" id="s3-box"><b>Y 鍵</b><br>烈焰 (4s)</div>
-        <div class="skill-box" id="s4-box"><b>B 鍵</b><br>紫電 (6s)</div>
-    </div>
-
-<script>
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x04040a);
-scene.fog = new THREE.FogExp2(0x04040a, 0.012);
-
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 4, 34);
-camera.lookAt(0, 2, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-dirLight.position.set(10, 25, 20);
-scene.add(dirLight);
-
-// 岩漿與平台
-const lavaGeo = new THREE.PlaneGeometry(300, 300);
-const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
-const lavaMesh = new THREE.Mesh(lavaGeo, lavaMat);
-lavaMesh.rotation.x = -Math.PI / 2;
-lavaMesh.position.y = -8;
-scene.add(lavaMesh);
-
-const mainFloorGeo = new THREE.BoxGeometry(22, 1.5, 6);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x181824, roughness: 0.3 });
-const mainFloor = new THREE.Mesh(mainFloorGeo, floorMat);
-mainFloor.position.set(0, -1, 0);
-scene.add(mainFloor);
-
-const platforms = [
-    mainFloor,
-    createPlatform(-7, 3.5, 5),
-    createPlatform(7, 3.5, 5),
-    createPlatform(0, 6.5, 4.5)
-];
-
-function createPlatform(x, y, w) {
-    const geo = new THREE.BoxGeometry(w, 0.6, 5);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x2d2d44 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, 0);
-    scene.add(mesh);
-    return mesh;
-}
-
-// 角色類別：手腳由「兩個方塊」組成，持有長光劍與特效
-class FighterCustom {
-    constructor(x, color, isAI = false) {
-        this.isAI = isAI;
-        this.hp = 100;
-        this.mesh = new THREE.Group();
-        this.mesh.position.set(x, 1, 0);
-
-        // 軀幹
-        const bodyGeo = new THREE.BoxGeometry(1.2, 2.0, 0.7);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: color });
-        this.body = new THREE.Mesh(bodyGeo, bodyMat);
-        this.body.position.y = 1.2;
-        this.mesh.add(this.body);
-
-        // 頭部
-        const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xe0c090 });
-        this.head = new THREE.Mesh(headGeo, headMat);
-        this.head.position.y = 2.4;
-        this.mesh.add(this.head);
-
-        // 四肢設定：每隻手與腳由「兩個方塊」組成 (上節與下節)
-        this.limbs = {};
-        this.limbs.leftArmUp = this.createLimbPart(0.4, 0.8);
-        this.limbs.leftArmLow = this.createLimbPart(0.4, 0.8);
-        this.limbs.rightArmUp = this.createLimbPart(0.4, 0.8);
-        this.limbs.rightArmLow = this.createLimbPart(0.4, 0.8);
+    <div class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-6 md:p-8">
         
-        this.limbs.leftLegUp = this.createLimbPart(0.45, 0.9);
-        this.limbs.leftLegLow = this.createLimbPart(0.45, 0.9);
-        this.limbs.rightLegUp = this.createLimbPart(0.45, 0.9);
-        this.limbs.rightLegLow = this.createLimbPart(0.45, 0.9);
+        <!-- Top Header & Track Switcher -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto flex items-center space-x-4 border-l-4 border-red-500">
+                <div class="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center text-red-400 font-bold text-xl">
+                    <i class="fa-solid fa-car"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-white via-slate-200 to-red-400 bg-clip-text text-transparent">
+                        Model 3 <span class="text-red-500 font-light">Highland</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 tracking-widest uppercase">Ultimate 3D Racing Simulator</p>
+                </div>
+            </div>
 
-        // 長光劍武器
-        this.saberGroup = new THREE.Group();
-        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), new THREE.MeshStandardMaterial({ color: 0x333333 }));
-        hilt.position.y = 0.35;
-        this.saberGroup.add(hilt);
+            <!-- Track Switcher Buttons -->
+            <div class="glass-panel p-2 rounded-2xl pointer-events-auto flex items-center space-x-2">
+                <span class="text-xs font-semibold px-3 text-slate-400 uppercase tracking-wider hidden sm:inline">場地 (Y鍵):</span>
+                <button onclick="switchEnvironment(0)" id="env-btn-0" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-red-600 text-white shadow-lg shadow-red-600/30">
+                    <i class="fa-solid fa-city mr-1.5"></i> 賽博都市
+                </button>
+                <button onclick="switchEnvironment(1)" id="env-btn-1" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10">
+                    <i class="fa-solid fa-mountain mr-1.5"></i> 環形山路
+                </button>
+                <button onclick="switchEnvironment(2)" id="env-btn-2" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10">
+                    <i class="fa-solid fa-store mr-1.5"></i> 特斯拉展廳
+                </button>
+            </div>
+        </div>
+
+        <!-- Middle Section: Gamepad Real-time Visualizer & Camera Status -->
+        <div class="flex flex-col md:flex-row justify-between items-center my-auto pointer-events-none gap-4">
+            
+            <!-- Switch Pro Controller Real-time Status Box -->
+            <div id="gamepad-status-box" class="glass-panel p-4 rounded-2xl pointer-events-auto flex flex-col space-y-2 border border-slate-700 max-w-xs transition-all">
+                <div class="flex items-center justify-between text-xs font-bold text-amber-400">
+                    <span id="controller-name-label"><i class="fa-solid fa-gamepad mr-1.5"></i> Switch Pro 手把未連線</span>
+                    <span id="controller-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5 text-[10px] text-center font-mono">
+                    <div id="ind-zl" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">ZL(煞車)</div>
+                    <div id="ind-zr" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">ZR(油門)</div>
+                    <div id="ind-y" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">Y(場地)</div>
+                    <div id="ind-dpad" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">十字(視角)</div>
+                </div>
+            </div>
+
+            <!-- Active Surround Camera Indicator -->
+            <div class="glass-panel px-5 py-3 rounded-2xl text-xs font-semibold tracking-wider text-cyan-400 border border-cyan-500/30">
+                環景視角 (十字鍵/D-Pad)：<span id="camera-mode-label" class="text-white font-bold">第三人稱動態跟隨</span>
+            </div>
+        </div>
+
+        <!-- Bottom HUD: Speedometer & Controls Guide -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            
+            <!-- Controls Guide Panel -->
+            <div class="glass-panel p-4 rounded-2xl pointer-events-auto text-xs space-y-2">
+                <div class="flex items-center justify-between text-slate-300 font-bold border-b border-white/10 pb-2">
+                    <span><i class="fa-solid fa-gamepad text-red-400 mr-2"></i> 搖桿控制對應表</span>
+                    <span class="text-[10px] text-slate-400">Nintendo Switch Pro</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-slate-400">
+                    <div><b class="text-white">ZR 鍵 / W:</b> 油門加速</div>
+                    <div><b class="text-white">ZL 鍵 / S:</b> 煞車 / 倒車</div>
+                    <div><b class="text-white">左蘑菇頭 / A/D:</b> 左右轉向</div>
+                    <div><b class="text-white">Y 鍵 / Space:</b> 切換賽道場地</div>
+                    <div><b class="text-white">十字鍵 ↑:</b> 車頭前方檢視</div>
+                    <div><b class="text-white">十字鍵 ↓:</b> 車尾後方檢視</div>
+                    <div><b class="text-white">十字鍵 ←:</b> 車身左側檢視</div>
+                    <div><b class="text-white">十字鍵 →:</b> 車身右側檢視</div>
+                </div>
+            </div>
+
+            <!-- Speedometer Center Panel -->
+            <div class="glass-panel p-6 rounded-3xl pointer-events-auto flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-t from-red-600/10 to-transparent pointer-events-none"></div>
+                <div class="flex items-baseline space-x-2">
+                    <span id="speed-display" class="text-6xl md:text-7xl font-black tracking-tighter text-white glow-text">0</span>
+                    <span class="text-sm font-bold text-red-500 uppercase tracking-widest">km/h</span>
+                </div>
+                <div class="flex items-center space-x-4 mt-3">
+                    <div class="px-3 py-1 rounded-lg bg-black/40 border border-white/10 text-xs font-mono">
+                        檔位: <span id="gear-display" class="font-bold text-emerald-400">P</span>
+                    </div>
+                    <div class="px-3 py-1 rounded-lg bg-black/40 border border-white/10 text-xs font-mono">
+                        馬達輸出: <span id="power-display" class="font-bold text-cyan-400">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vehicle Telemetry & Battery -->
+            <div class="glass-panel p-4 rounded-2xl pointer-events-auto space-y-3">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-300 border-b border-white/10 pb-2">
+                    <span><i class="fa-solid fa-bolt text-amber-400 mr-2"></i> Model 3 Highland 規格</span>
+                    <span class="text-emerald-400">100% 🔋</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <div class="flex justify-between text-slate-400 mb-1">
+                            <span>雙馬達四驅動力</span>
+                            <span class="text-slate-200">513 hp (0-100: 3.1s)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-gradient-to-r from-red-500 to-amber-400 h-full w-full rounded-full"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-400 mb-1">
+                            <span>輪胎與煞車系統</span>
+                            <span class="text-slate-200">19吋渦輪風扇框 + 黑色卡鉗</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-[90%] rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // --- Core Simulation State ---
+        let scene, camera, renderer;
+        let carGroup, wheels = [], steeringWheelMesh;
+        let currentEnv = 0; // 0: Cyber City, 1: Mountain Pass, 2: Showroom
+        let cameraMode = 0; // 0: Follow, 1: Front, 2: Rear, 3: Left, 4: Right
         
-        const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.5), new THREE.MeshBasicMaterial({ color: color }));
-        blade.position.y = 2.6;
-        this.saberGroup.add(blade);
-        this.saberGroup.position.set(0.7, 1.4, 0);
-        this.mesh.add(this.saberGroup);
+        let speed = 0;
+        let maxSpeed = 1.9;
+        let acceleration = 0.012;
+        let deceleration = 0.008;
+        let steeringAngle = 0;
+        let maxSteeringAngle = 0.6;
+        let carRotation = 0;
+        let carPosition = new THREE.Vector3(0, 0, 0);
+        let currentGear = 'P';
 
-        scene.add(this.mesh);
+        // Keyboard Fallback Input State
+        const keys = { w: false, s: false, a: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false };
 
-        this.vx = 0;
-        this.vy = 0;
-        this.isGrounded = false;
-        this.speed = 0.15;
-        this.jumpForce = 0.31;
-        this.aimAngle = 0;
+        let envGroup = new THREE.Group();
 
-        // 4個技能冷卻計時器
-        this.cooldowns = { s1: 0, s2: 0, s3: 0, s4: 0 };
-    }
+        // --- Initialization ---
+        function initSimulator() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x030712);
+            scene.fog = new THREE.FogExp2(0x030712, 0.012);
 
-    createLimbPart(w, h) {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: 0x11111a }));
-        this.mesh.add(mesh);
-        return mesh;
-    }
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    update(opponent) {
-        if (this.hp <= 0) return;
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.25;
+            container.appendChild(renderer.domElement);
 
-        this.vy -= 0.014;
-        this.mesh.position.y += this.vy;
-        this.mesh.position.x += this.vx;
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
 
-        if (this.mesh.position.y < -7) {
-            this.hp = 0;
-            return;
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+            dirLight.position.set(40, 60, 40);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            const d = 50;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            scene.add(envGroup);
+            buildTeslaModel3Highland();
+            buildEnvironment(currentEnv);
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => handleKey(e, true));
+            window.addEventListener('keyup', (e) => handleKey(e, false));
+
+            animate();
         }
 
-        this.mesh.position.z = 0;
-        this.isGrounded = false;
+        // --- Model 3 Highland 1:1 Detailed Construction ---
+        function buildTeslaModel3Highland() {
+            carGroup = new THREE.Group();
 
-        platforms.forEach(p => {
-            const box = new THREE.Box3().setFromObject(p);
-            if (this.vy <= 0 && this.mesh.position.x >= box.min.x - 0.8 && this.mesh.position.x <= box.max.x + 0.8) {
-                let surfaceY = box.max.y;
-                if (Math.abs(this.mesh.position.y - surfaceY) < 0.6) {
-                    this.mesh.position.y = surfaceY;
-                    this.vy = 0;
-                    this.isGrounded = true;
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0xef4444, // Tesla Ultra Red / Stealth Red
+                metalness: 0.9,
+                roughness: 0.12,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1
+            });
+
+            const blackTrimMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                metalness: 0.2,
+                roughness: 0.8
+            });
+
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x0a0a0a,
+                metalness: 0.1,
+                roughness: 0.1,
+                transmission: 0.85,
+                transparent: true,
+                opacity: 0.75,
+                reflectivity: 0.9
+            });
+
+            const headlightMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: 0x90e0ef,
+                emissiveIntensity: 2.5,
+                roughness: 0.1
+            });
+
+            const taillightMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 3.5,
+                roughness: 0.1
+            });
+
+            // Main Lower Body
+            const lowerGeo = new THREE.BoxGeometry(4.3, 0.52, 1.95);
+            const lowerMesh = new THREE.Mesh(lowerGeo, bodyMaterial);
+            lowerMesh.position.set(0, 0.36, 0);
+            lowerMesh.castShadow = true;
+            lowerMesh.receiveShadow = true;
+            carGroup.add(lowerMesh);
+
+            // Highland Sleek Streamlined Hood
+            const hoodGeo = new THREE.BoxGeometry(1.5, 0.3, 1.85);
+            const hoodMesh = new THREE.Mesh(hoodGeo, bodyMaterial);
+            hoodMesh.position.set(1.35, 0.56, 0);
+            hoodMesh.rotation.z = -0.07;
+            hoodMesh.castShadow = true;
+            carGroup.add(hoodMesh);
+
+            // Panoramic Glass Roof
+            const roofGeo = new THREE.BoxGeometry(2.1, 0.15, 1.75);
+            const roofMesh = new THREE.Mesh(roofGeo, glassMaterial);
+            roofMesh.position.set(-0.05, 1.04, 0);
+            carGroup.add(roofMesh);
+
+            // Windshields
+            const windshieldGeo = new THREE.PlaneGeometry(1.55, 1.15);
+            const windshieldMesh = new THREE.Mesh(windshieldGeo, glassMaterial);
+            windshieldMesh.position.set(0.68, 0.86, 0);
+            windshieldMesh.rotation.y = Math.PI / 2;
+            windshieldMesh.rotation.z = -0.65;
+            carGroup.add(windshieldMesh);
+
+            const rearGlassMesh = new THREE.Mesh(windshieldGeo, glassMaterial);
+            rearGlassMesh.position.set(-0.88, 0.84, 0);
+            rearGlassMesh.rotation.y = -Math.PI / 2;
+            rearGlassMesh.rotation.z = -0.55;
+            carGroup.add(rearGlassMesh);
+
+            // Matrix LED Headlights (Highland Dual Strip)
+            const headlightGeo = new THREE.BoxGeometry(0.12, 0.12, 0.45);
+            const leftHeadlight = new THREE.Mesh(headlightGeo, headlightMaterial);
+            leftHeadlight.position.set(2.05, 0.52, 0.82);
+            carGroup.add(leftHeadlight);
+            const rightHeadlight = leftHeadlight.clone();
+            rightHeadlight.position.set(2.05, 0.52, -0.82);
+            carGroup.add(rightHeadlight);
+
+            // C-Shaped Wrap-around Tail Lights
+            const taillightGeo = new THREE.BoxGeometry(0.12, 0.18, 0.52);
+            const leftTaillight = new THREE.Mesh(taillightGeo, taillightMaterial);
+            leftTaillight.position.set(-2.1, 0.62, 0.78);
+            carGroup.add(leftTaillight);
+            const rightTaillight = leftTaillight.clone();
+            rightTaillight.position.set(-2.1, 0.62, -0.78);
+            carGroup.add(rightTaillight);
+
+            // Carbon Lip Spoiler & Diffuser
+            const spoilerGeo = new THREE.BoxGeometry(0.22, 0.05, 1.8);
+            const spoilerMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.9 });
+            const spoilerMesh = new THREE.Mesh(spoilerGeo, spoilerMat);
+            spoilerMesh.position.set(-2.05, 0.94, 0);
+            carGroup.add(spoilerMesh);
+
+            const diffuserGeo = new THREE.BoxGeometry(0.45, 0.16, 1.75);
+            const diffuserMesh = new THREE.Mesh(diffuserGeo, blackTrimMaterial);
+            diffuserMesh.position.set(-2.1, 0.23, 0);
+            carGroup.add(diffuserMesh);
+
+            // 19" Turbine Alloy Wheels with Black Calipers
+            const wheelGeo = new THREE.CylinderGeometry(0.39, 0.39, 0.26, 32);
+            wheelGeo.rotateX(Math.PI / 2);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.4 });
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.9, roughness: 0.2 });
+
+            const wheelPositions = [
+                { x: 1.4, y: 0.39, z: 0.98 },
+                { x: 1.4, y: 0.39, z: -0.98 },
+                { x: -1.4, y: 0.39, z: 0.98 },
+                { x: -1.4, y: 0.39, z: -0.98 }
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wGroup = new THREE.Group();
+                const tire = new THREE.Mesh(wheelGeo, wheelMat);
+                tire.castShadow = true;
+                wGroup.add(tire);
+
+                const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.28, 16), rimMat);
+                rim.rotation.x = Math.PI / 2;
+                wGroup.add(rim);
+
+                wGroup.position.set(pos.x, pos.y, pos.z);
+                carGroup.add(wGroup);
+                wheels.push(wGroup);
+            });
+
+            // Interior Details (Seats & 15.4" Floating Touchscreen)
+            const interiorGroup = new THREE.Group();
+            const seatMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.8 });
+            
+            const driverSeat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.82, 0.52), seatMat);
+            driverSeat.position.set(-0.12, 0.66, 0.36);
+            driverSeat.rotation.z = -0.2;
+            interiorGroup.add(driverSeat);
+
+            const passengerSeat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.82, 0.52), seatMat);
+            passengerSeat.position.set(-0.12, 0.66, -0.36);
+            passengerSeat.rotation.z = -0.2;
+            interiorGroup.add(passengerSeat);
+
+            // Center Touchscreen
+            const screenMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, 0.32, 0.48),
+                new THREE.MeshStandardMaterial({ color: 0x00d2ff, emissive: 0x004477, emissiveIntensity: 0.9 })
+            );
+            screenMesh.position.set(0.58, 0.8, 0);
+            interiorGroup.add(screenMesh);
+
+            // Steering Wheel
+            steeringWheelMesh = new THREE.Mesh(
+                new THREE.TorusGeometry(0.18, 0.03, 16, 32),
+                blackTrimMaterial
+            );
+            steeringWheelMesh.position.set(0.42, 0.86, 0.36);
+            steeringWheelMesh.rotation.y = Math.PI / 2;
+            steeringWheelMesh.rotation.z = 0.3;
+            interiorGroup.add(steeringWheelMesh);
+
+            carGroup.add(interiorGroup);
+            carGroup.scale.set(1.5, 1.5, 1.5);
+            carGroup.position.copy(carPosition);
+            scene.add(carGroup);
+        }
+
+        // --- Environments Builder ---
+        function buildEnvironment(type) {
+            while(envGroup.children.length > 0){ envGroup.remove(envGroup.children[0]); }
+
+            if (type === 0) {
+                // Cyber Neon City
+                scene.background = new THREE.Color(0x030712);
+                scene.fog = new THREE.FogExp2(0x030712, 0.012);
+
+                const road = new THREE.Mesh(
+                    new THREE.PlaneGeometry(350, 350),
+                    new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.8, metalness: 0.2 })
+                );
+                road.rotation.x = -Math.PI / 2;
+                road.receiveShadow = true;
+                envGroup.add(road);
+
+                const grid = new THREE.GridHelper(350, 70, 0xef4444, 0x00ffff);
+                grid.position.y = 0.02;
+                envGroup.add(grid);
+
+                const colors = [0xef4444, 0x00ffff, 0x8b5cf6, 0xf59e0b];
+                for (let i = 0; i < 60; i++) {
+                    const h = 35 + Math.random() * 80;
+                    const b = new THREE.Mesh(
+                        new THREE.BoxGeometry(14 + Math.random() * 16, h, 14 + Math.random() * 16),
+                        new THREE.MeshStandardMaterial({
+                            color: 0x090d16,
+                            roughness: 0.3,
+                            metalness: 0.8,
+                            emissive: colors[Math.floor(Math.random() * colors.length)],
+                            emissiveIntensity: 0.15
+                        })
+                    );
+                    let x, z;
+                    do {
+                        x = (Math.random() - 0.5) * 300;
+                        z = (Math.random() - 0.5) * 300;
+                    } while (Math.abs(x) < 25 && Math.abs(z) < 25);
+                    b.position.set(x, h / 2, z);
+                    b.castShadow = true;
+                    b.receiveShadow = true;
+                    envGroup.add(b);
+                }
+            } else if (type === 1) {
+                // Mountain Pass
+                scene.background = new THREE.Color(0x87ceeb);
+                scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
+
+                const ground = new THREE.Mesh(
+                    new THREE.PlaneGeometry(450, 450),
+                    new THREE.MeshStandardMaterial({ color: 0x2e5a27, roughness: 0.9 })
+                );
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                envGroup.add(ground);
+
+                const road = new THREE.Mesh(
+                    new THREE.PlaneGeometry(18, 450),
+                    new THREE.MeshStandardMaterial({ color: 0x262626, roughness: 0.7 })
+                );
+                road.rotation.x = -Math.PI / 2;
+                road.position.y = 0.05;
+                road.receiveShadow = true;
+                envGroup.add(road);
+
+                const treeMat = new THREE.MeshStandardMaterial({ color: 0x1b4d3e, roughness: 0.8 });
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525 });
+
+                for (let i = 0; i < 140; i++) {
+                    const tGroup = new THREE.Group();
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3, 6), trunkMat);
+                    trunk.position.y = 1.5;
+                    const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.6, 7.5, 6), treeMat);
+                    leaves.position.y = 5.5;
+                    tGroup.add(trunk, leaves);
+
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 30 + Math.random() * 180;
+                    tGroup.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+                    envGroup.add(tGroup);
+                }
+            } else if (type === 2) {
+                // Showroom
+                scene.background = new THREE.Color(0x0f172a);
+                scene.fog = new THREE.FogExp2(0x0f172a, 0.004);
+
+                const floor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(90, 90),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.1, metalness: 0.9 })
+                );
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                envGroup.add(floor);
+
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(9, 9.6, 32),
+                    new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide })
+                );
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 14;
+                envGroup.add(ring);
+            }
+        }
+
+        // --- Controls Handling ---
+        function handleKey(e, isDown) {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || k === 'arrowup') keys.w = isDown;
+            if (k === 's' || k === 'arrowdown') keys.s = isDown;
+            if (k === 'a' || k === 'arrowleft') keys.a = isDown;
+            if (k === 'd' || k === 'arrowright') keys.d = isDown;
+            
+            if (isDown) {
+                if (k === 'y' || k === ' ') {
+                    currentEnv = (currentEnv + 1) % 3;
+                    switchEnvironment(currentEnv);
                 }
             }
-        });
-
-        // 殘影特效
-        if (Math.abs(this.vx) > 0.02 || Math.abs(this.vy) > 0.05) {
-            createTrail(this.mesh.position, this.body.material.color);
         }
 
-        this.vx *= 0.8;
-
-        // 減少技能冷卻
-        for (let k in this.cooldowns) {
-            if (this.cooldowns[k] > 0) this.cooldowns[k]--;
-        }
-
-        // 聰明 AI 邏輯與 4 技能釋放
-        if (this.isAI) {
-            let dx = p1.mesh.position.x - this.mesh.position.x;
-            let dy = p1.mesh.position.y - this.mesh.position.y;
-            
-            if (Math.abs(dx) > 1.5) this.vx = Math.sign(dx) * (this.speed * 0.9);
-            if (dy > 1.5 && this.isGrounded && Math.random() < 0.03) this.vy = this.jumpForce;
-
-            this.aimAngle = Math.atan2(dy, dx);
-            this.saberGroup.rotation.z = -this.aimAngle + Math.PI / 2;
-
-            // AI 隨機施放 4 個技能
-            if (Math.abs(dx) < 14) {
-                if (this.cooldowns.s1 === 0 && Math.random() < 0.025) { useSkill(this, p1, 1); }
-                else if (this.cooldowns.s2 === 0 && Math.random() < 0.02) { useSkill(this, p1, 2); }
-                else if (this.cooldowns.s3 === 0 && Math.random() < 0.015) { useSkill(this, p1, 3); }
-                else if (this.cooldowns.s4 === 0 && Math.random() < 0.01) { useSkill(this, p1, 4); }
+        function switchEnvironment(idx) {
+            currentEnv = idx;
+            buildEnvironment(currentEnv);
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`env-btn-${i}`);
+                if (i === idx) {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-red-600 text-white shadow-lg shadow-red-600/30";
+                } else {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10";
+                }
             }
         }
-    }
-}
 
-const p1 = new FighterCustom(-5, 0xff3344, false);
-const p2 = new FighterCustom(5, 0x00d2ff, true);
+        // --- Gamepad Poll & Controller Logic ---
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) { gp = gamepads[i]; break; }
+            }
 
-// 殘影特效系統
-const trails = [];
-function createTrail(pos, color) {
-    const geo = new THREE.BoxGeometry(1.2, 2.0, 0.7);
-    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.copy(pos);
-    mesh.position.y += 1.2;
-    scene.add(mesh);
-    trails.push({ mesh: mesh, life: 12 });
-}
+            const nameLabel = document.getElementById('controller-name-label');
+            const dot = document.getElementById('controller-dot');
+            const indZl = document.getElementById('ind-zl');
+            const indZr = document.getElementById('ind-zr');
+            const indY = document.getElementById('ind-y');
+            const indDpad = document.getElementById('ind-dpad');
 
-// 特效與技能實現 (+4個技能)
-const skillEffects = [];
-function useSkill(caster, target, skillId) {
-    if (caster.cooldowns['s' + skillId] > 0) return;
+            if (gp) {
+                nameLabel.innerHTML = `<i class="fa-solid fa-gamepad mr-1.5 text-emerald-400"></i>已連接: ${gp.id.slice(0, 16)}`;
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
 
-    if (skillId === 1) {
-        // 技能 1：藍色劍刺 (5秒冷卻)
-        caster.cooldowns.s1 = 300;
-        createProjectile(caster, target, 0x00ffff, 0.45, 25);
-    } else if (skillId === 2) {
-        // 技能 2：爪擊旋風斬 (3秒冷卻)
-        caster.cooldowns.s2 = 180;
-        createSlashEffect(caster.mesh.position, 0x00ffcc, 3.5);
-        if (caster.mesh.position.distanceTo(target.mesh.position) < 4) {
-            target.hp -= 15;
-            target.vx += (caster.isAI ? -0.5 : 0.5);
-        }
-    } else if (skillId === 3) {
-        // 技能 3：烈焰十字斬 (4秒冷卻)
-        caster.cooldowns.s3 = 240;
-        createSlashEffect(caster.mesh.position, 0xff5500, 5.0);
-        if (caster.mesh.position.distanceTo(target.mesh.position) < 5) {
-            target.hp -= 25;
-            target.vy += 0.3;
-        }
-    } else if (skillId === 4) {
-        // 技能 4：紫電高速衝刺 (6秒冷卻)
-        caster.cooldowns.s4 = 360;
-        caster.vx = (target.mesh.position.x > caster.mesh.position.x ? 1 : -1) * 1.2;
-        createSlashEffect(caster.mesh.position, 0xaa00ff, 6.0);
-        if (caster.mesh.position.distanceTo(target.mesh.position) < 4.5) {
-            target.hp -= 30;
-            target.vx += caster.vx * 0.8;
-        }
-    }
-}
+                // Left Joystick Steering (Axis 0)
+                const stickX = gp.axes[0];
+                if (Math.abs(stickX) > 0.15) {
+                    steeringAngle = -stickX * maxSteeringAngle;
+                } else if (!keys.a && !keys.d && !keys.arrowleft && !keys.arrowright) {
+                    steeringAngle *= 0.85;
+                }
 
-// 遠程劍刺投射物
-const projectiles = [];
-function createProjectile(caster, target, color, speed, dmg) {
-    const geo = new THREE.ConeGeometry(0.25, 2, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: color });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.copy(caster.mesh.position);
-    mesh.position.y += 1.5;
+                // ZR (Throttle - button 7) and ZL (Brake - button 6)
+                const zrVal = gp.buttons[7] ? gp.buttons[7].value : 0;
+                const zlVal = gp.buttons[6] ? gp.buttons[6].value : 0;
 
-    let dir = new THREE.Vector3().subVectors(target.mesh.position, caster.mesh.position).normalize();
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    scene.add(mesh);
-    projectiles.push({ mesh: mesh, dir: dir, speed: speed, dmg: dmg, target: target });
-}
+                if (zrVal > 0.1) {
+                    speed = Math.min(maxSpeed, speed + acceleration * zrVal);
+                    currentGear = 'D';
+                    indZr.classList.add('controller-btn-active');
+                } else {
+                    indZr.classList.remove('controller-btn-active');
+                }
 
-// 刀光/爪擊特效殘影
-function createSlashEffect(pos, color, scale) {
-    const geo = new THREE.RingGeometry(scale * 0.6, scale, 16);
-    const mat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.copy(pos);
-    mesh.position.y += 1.5;
-    mesh.rotation.x = Math.PI / 2;
-    scene.add(mesh);
-    skillEffects.push({ mesh: mesh, life: 15 });
-}
+                if (zlVal > 0.1) {
+                    speed = Math.max(-maxSpeed * 0.4, speed - deceleration * zlVal);
+                    currentGear = 'R';
+                    indZl.classList.add('controller-btn-active');
+                } else {
+                    indZl.classList.remove('controller-btn-active');
+                }
 
-// 輸入控制 (鍵盤與手把 A, X, Y, B 鍵)
-const keys = {};
-window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+                // Y Button (Button 3) to switch tracks
+                if (gp.buttons[3] && gp.buttons[3].pressed) {
+                    indY.classList.add('controller-btn-active');
+                    if (!gp._yLocked) {
+                        currentEnv = (currentEnv + 1) % 3;
+                        switchEnvironment(currentEnv);
+                        gp._yLocked = true;
+                    }
+                } else {
+                    indY.classList.remove('controller-btn-active');
+                    gp._yLocked = false;
+                }
 
-function handleInput() {
-    if (keys['KeyA']) p1.vx = -p1.speed;
-    if (keys['KeyD']) p1.vx = p1.speed;
-    if (keys['KeyW'] && p1.isGrounded) { p1.vy = p1.jumpForce; p1.isGrounded = false; }
-    if (keys['KeyK']) useSkill(p1, p2, 1);
-    if (keys['KeyL']) useSkill(p1, p2, 2);
-    if (keys['KeyI']) useSkill(p1, p2, 3);
-    if (keys['KeyU']) useSkill(p1, p2, 4);
+                // D-Pad / Cross for Camera Angles (Buttons 12:Up, 13:Down, 14:Left, 15:Right)
+                if (gp.buttons[12] && gp.buttons[12].pressed) { cameraMode = 1; updateCamLabel("車頭前方檢視"); indDpad.classList.add('controller-btn-active'); }
+                else if (gp.buttons[13] && gp.buttons[13].pressed) { cameraMode = 2; updateCamLabel("車尾後方檢視"); indDpad.classList.add('controller-btn-active'); }
+                else if (gp.buttons[14] && gp.buttons[14].pressed) { cameraMode = 3; updateCamLabel("車身左側檢視"); indDpad.classList.add('controller-btn-active'); }
+                else if (gp.buttons[15] && gp.buttons[15].pressed) { cameraMode = 4; updateCamLabel("車身右側檢視"); indDpad.classList.add('controller-btn-active'); }
+                else {
+                    if (!gp.buttons[12]?.pressed && !gp.buttons[13]?.pressed && !gp.buttons[14]?.pressed && !gp.buttons[15]?.pressed) {
+                        // If no D-pad pressed, check if stick clicked or default to follow cam if desired
+                        indDpad.classList.remove('controller-btn-active');
+                    }
+                }
 
-    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    if (gamepads[0]) {
-        const gp = gamepads[0];
-        let lx = gp.axes[0];
-        let ly = gp.axes[1];
-        if (Math.abs(lx) > 0.15) p1.vx = lx * p1.speed;
-        if ((ly < -0.6 || (gp.buttons[1] && gp.buttons[1].pressed)) && p1.isGrounded) {
-            p1.vy = p1.jumpForce;
-            p1.isGrounded = false;
+            } else {
+                nameLabel.innerHTML = `<i class="fa-solid fa-gamepad mr-1.5"></i>Switch Pro 手把未連線`;
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
+                indZl.classList.remove('controller-btn-active');
+                indZr.classList.remove('controller-btn-active');
+                indY.classList.remove('controller-btn-active');
+                indDpad.classList.remove('controller-btn-active');
+            }
         }
 
-        let rx = gp.axes[2], ry = gp.axes[3];
-        if (Math.abs(rx) > 0.15 || Math.abs(ry) > 0.15) {
-            p1.aimAngle = Math.atan2(-ry, rx);
-            p1.saberGroup.rotation.z = -p1.aimAngle + Math.PI / 2;
+        function updateCamLabel(txt) {
+            document.getElementById('camera-mode-label').innerText = txt;
         }
 
-        // 4個技能按鈕對應手把 (A=0, X=2, Y=3, B=1)
-        if (gp.buttons[0] && gp.buttons[0].pressed) useSkill(p1, p2, 1); // A鍵: 劍刺
-        if (gp.buttons[2] && gp.buttons[2].pressed) useSkill(p1, p2, 2); // X鍵: 爪擊
-        if (gp.buttons[3] && gp.buttons[3].pressed) useSkill(p1, p2, 3); // Y鍵: 烈焰斬
-        if (gp.buttons[1] && gp.buttons[1].pressed) useSkill(p1, p2, 4); // B鍵: 紫電衝刺
-    }
-}
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
 
-function animate() {
-    requestAnimationFrame(animate);
-    handleInput();
+            pollGamepad();
 
-    p1.update(p2);
-    p2.update(p1);
+            // Keyboard Fallbacks
+            if (keys.a || keys.arrowleft) steeringAngle = Math.min(maxSteeringAngle, steeringAngle + 0.05);
+            else if (keys.d || keys.arrowright) steeringAngle = Math.max(-maxSteeringAngle, steeringAngle - 0.05);
+            else if (!navigator.getGamepads()[0] || Math.abs(navigator.getGamepads()[0].axes[0]) < 0.15) steeringAngle *= 0.85;
 
-    // 更新技能介面冷卻狀態
-    document.getElementById('s1-box').className = 'skill-box ' + (p1.cooldowns.s1 > 0 ? 'cd' : '');
-    document.getElementById('s2-box').className = 'skill-box ' + (p1.cooldowns.s2 > 0 ? 'cd' : '');
-    document.getElementById('s3-box').className = 'skill-box ' + (p1.cooldowns.s3 > 0 ? 'cd' : '');
-    document.getElementById('s4-box').className = 'skill-box ' + (p1.cooldowns.s4 > 0 ? 'cd' : '');
+            if (keys.w || keys.arrowup) {
+                speed = Math.min(maxSpeed, speed + acceleration);
+                currentGear = 'D';
+            } else if (keys.s || keys.arrowdown) {
+                speed = Math.max(-maxSpeed * 0.4, speed - deceleration);
+                currentGear = 'R';
+            } else if (!navigator.getGamepads()[0] || (navigator.getGamepads()[0].buttons[6]?.value || 0) < 0.1 && (navigator.getGamepads()[0].buttons[7]?.value || 0) < 0.1) {
+                if (speed > 0) speed = Math.max(0, speed - deceleration * 0.7);
+                else if (speed < 0) speed = Math.min(0, speed + deceleration * 0.7);
+                else currentGear = 'P';
+            }
 
-    // 更新投射物
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        let p = projectiles[i];
-        p.mesh.position.addScaledVector(p.dir, p.speed);
-        if (p.mesh.position.distanceTo(p.target.mesh.position) < 2) {
-            p.target.hp -= p.dmg;
-            scene.remove(p.mesh);
-            projectiles.splice(i, 1);
-            continue;
+            // Physics update
+            if (Math.abs(speed) > 0.001) {
+                carRotation += speed * steeringAngle * 0.4;
+                carPosition.x += Math.cos(carRotation) * speed * 0.85;
+                carPosition.z -= Math.sin(carRotation) * speed * 0.85;
+            }
+
+            if (carGroup) {
+                carGroup.position.copy(carPosition);
+                carGroup.rotation.y = carRotation;
+
+                wheels.forEach(w => { w.rotation.z += speed * 0.5; });
+                if (steeringWheelMesh) steeringWheelMesh.rotation.x = steeringAngle * 1.5;
+            }
+
+            updateCameraPosition();
+
+            // HUD Telemetry
+            const speedKmh = Math.round(Math.abs(speed) * 115);
+            document.getElementById('speed-display').innerText = speedKmh;
+            document.getElementById('gear-display').innerText = currentGear;
+            document.getElementById('power-display').innerText = `${Math.round((Math.abs(speed) / maxSpeed) * 100)}%`;
+
+            renderer.render(scene, camera);
         }
-        if (p.mesh.position.length() > 50) {
-            scene.remove(p.mesh);
-            projectiles.splice(i, 1);
+
+        function updateCameraPosition() {
+            if (!carGroup) return;
+            const pos = carGroup.position;
+            const fwd = new THREE.Vector3(Math.cos(carRotation), 0, -Math.sin(carRotation));
+
+            if (cameraMode === 0) {
+                // Dynamic Follow Cam
+                const target = new THREE.Vector3(pos.x - fwd.x * 7.5, pos.y + 2.8, pos.z - fwd.z * 7.5);
+                camera.position.lerp(target, 0.1);
+                camera.lookAt(pos.x, pos.y + 0.8, pos.z);
+            } else if (cameraMode === 1) {
+                // Front Inspection
+                camera.position.set(pos.x + fwd.x * 5.5, pos.y + 1.4, pos.z + fwd.z * 5.5);
+                camera.lookAt(pos);
+            } else if (cameraMode === 2) {
+                // Rear Inspection
+                camera.position.set(pos.x - fwd.x * 5.5, pos.y + 1.4, pos.z - fwd.z * 5.5);
+                camera.lookAt(pos);
+            } else if (cameraMode === 3) {
+                // Left Inspection
+                camera.position.set(pos.x - fwd.z * 5.5, pos.y + 1.6, pos.x + fwd.x * 5.5);
+                camera.lookAt(pos);
+            } else if (cameraMode === 4) {
+                // Right Inspection
+                camera.position.set(pos.x + fwd.z * 5.5, pos.y + 1.6, pos.z - fwd.x * 5.5);
+                camera.lookAt(pos);
+            }
         }
-    }
 
-    // 更新技能特效殘影
-    for (let i = skillEffects.length - 1; i >= 0; i--) {
-        let eff = skillEffects[i];
-        eff.life--;
-        eff.mesh.scale.addScalar(0.1);
-        eff.mesh.material.opacity -= 0.06;
-        if (eff.life <= 0) {
-            scene.remove(eff.mesh);
-            skillEffects.splice(i, 1);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
-    }
 
-    // 更新身體殘影
-    for (let i = trails.length - 1; i >= 0; i--) {
-        let t = trails[i];
-        t.life--;
-        t.mesh.material.opacity -= 0.03;
-        if (t.life <= 0) {
-            scene.remove(t.mesh);
-            trails.splice(i, 1);
-        }
-    }
-
-    document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
-    document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
-
-    renderer.render(scene, camera);
-}
-
-animate();
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-</script>
-
+        window.onload = initSimulator;
+    </script>
 </body>
 </html>
