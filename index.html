@@ -3,721 +3,621 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>特斯拉究極擬真駕駛模擬器 (Tesla Model 3 Highland)</title>
+    <title>文青風假日、Google Earth 3D 視角與毫秒倒數</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Three.js 用於 3D 擬真 Google Earth 衛星地球與太陽互動模擬 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+TC:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #030712;
-            font-family: 'Inter', sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background-color: #060708;
+            color: #e5e5e0;
         }
-        #canvas-container {
+        .font-serif-title {
+            font-family: 'Cinzel', 'Noto Serif TC', serif;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .aspect-16-9-container {
             width: 100%;
-            height: 100%;
-            display: block;
+            max-width: 1400px;
+            aspect-ratio: 16 / 9;
+        }
+        @media (max-height: 850px) {
+            .aspect-16-9-container {
+                aspect-ratio: auto;
+                min-height: auto;
+            }
+        }
+        .circular-progress {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
         }
         .glass-panel {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            background: rgba(12, 14, 17, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .glow-text {
-            text-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+        .glass-box {
+            background: rgba(22, 25, 30, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
-        .controller-btn-active {
-            background-color: #ef4444 !important;
-            color: #ffffff !important;
-            border-color: #f87171 !important;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
-            transform: scale(0.95);
+        #earth-canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.35;
+            border-radius: 1.5rem;
+            overflow: hidden;
         }
     </style>
 </head>
-<body class="text-slate-100">
+<body class="min-h-screen bg-[#060708] text-[#e5e5e0] flex items-center justify-center p-2 sm:p-4 md:p-6 selection:bg-[#d4a373] selection:text-black">
 
-    <div id="canvas-container" class="absolute inset-0 z-0"></div>
-
-    <div class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-6 md:p-8">
+    <!-- 16:9 黃金比例主容器 -->
+    <div class="aspect-16-9-container glass-panel rounded-3xl p-4 sm:p-5 md:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden border border-white/10">
         
-        <!-- Top Header & Track Switcher -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto flex items-center space-x-4 border-l-4 border-red-500">
-                <div class="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center text-red-400 font-bold text-xl">
-                    <i class="fa-solid fa-car"></i>
+        <!-- 背景 Google Earth 3D 衛星地球互動畫布 -->
+        <div id="earth-canvas-container"></div>
+
+        <!-- 頂部文青風標題列 -->
+        <header class="flex items-center justify-between border-b border-white/10 pb-3 z-10">
+            <div>
+                <h1 class="text-lg sm:text-xl md:text-2xl font-serif-title font-normal tracking-widest text-[#f0efe9]">
+                    時 光 靜 好 • 台灣國定假日與 3D 衛星地球
+                </h1>
+                <p class="text-[10px] sm:text-xs text-[#a0a098] tracking-widest mt-0.5">GOOGLE EARTH SATELLITE VIEW • REALTIME MS COUNTDOWN</p>
+            </div>
+            <div class="text-right">
+                <div id="current-time" class="text-base sm:text-lg md:text-xl font-mono-num font-light text-[#f0efe9] tracking-wider">
+                    00:00:00
                 </div>
-                <div>
-                    <h1 class="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-white via-slate-200 to-red-400 bg-clip-text text-transparent">
-                        Model 3 <span class="text-red-500 font-light">Highland</span>
-                    </h1>
-                    <p class="text-xs text-slate-400 tracking-widest uppercase">Ultimate 3D Racing Simulator</p>
+                <div id="current-date" class="text-[10px] sm:text-xs text-[#a0a098] tracking-wider">
+                    ---- . -- . --
                 </div>
             </div>
+        </header>
 
-            <!-- Track Switcher Buttons -->
-            <div class="glass-panel p-2 rounded-2xl pointer-events-auto flex items-center space-x-2">
-                <span class="text-xs font-semibold px-3 text-slate-400 uppercase tracking-wider hidden sm:inline">場地 (Y鍵):</span>
-                <button onclick="switchEnvironment(0)" id="env-btn-0" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-red-600 text-white shadow-lg shadow-red-600/30">
-                    <i class="fa-solid fa-city mr-1.5"></i> 賽博都市
-                </button>
-                <button onclick="switchEnvironment(1)" id="env-btn-1" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10">
-                    <i class="fa-solid fa-mountain mr-1.5"></i> 環形山路
-                </button>
-                <button onclick="switchEnvironment(2)" id="env-btn-2" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10">
-                    <i class="fa-solid fa-store mr-1.5"></i> 特斯拉展廳
-                </button>
-            </div>
-        </div>
-
-        <!-- Middle Section: Gamepad Real-time Visualizer & Camera Status -->
-        <div class="flex flex-col md:flex-row justify-between items-center my-auto pointer-events-none gap-4">
+        <!-- 五個獨立文青風精緻框框 (1行5列，完美適應 16:9) -->
+        <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 my-auto py-2 z-10">
             
-            <!-- Switch Pro Controller Real-time Status Box -->
-            <div id="gamepad-status-box" class="glass-panel p-4 rounded-2xl pointer-events-auto flex flex-col space-y-2 border border-slate-700 max-w-xs transition-all">
-                <div class="flex items-center justify-between text-xs font-bold text-amber-400">
-                    <span id="controller-name-label"><i class="fa-solid fa-gamepad mr-1.5"></i> Switch Pro 手把未連線</span>
-                    <span id="controller-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                </div>
-                <div class="grid grid-cols-4 gap-1.5 text-[10px] text-center font-mono">
-                    <div id="ind-zl" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">ZL(煞車)</div>
-                    <div id="ind-zr" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">ZR(油門)</div>
-                    <div id="ind-y" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">Y(場地)</div>
-                    <div id="ind-dpad" class="bg-slate-800/80 rounded p-1 border border-white/10 text-slate-400">十字(視角)</div>
-                </div>
-            </div>
-
-            <!-- Active Surround Camera Indicator -->
-            <div class="glass-panel px-5 py-3 rounded-2xl text-xs font-semibold tracking-wider text-cyan-400 border border-cyan-500/30">
-                環景視角 (十字鍵/D-Pad)：<span id="camera-mode-label" class="text-white font-bold">第三人稱動態跟隨</span>
-            </div>
-        </div>
-
-        <!-- Bottom HUD: Speedometer & Controls Guide -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            
-            <!-- Controls Guide Panel -->
-            <div class="glass-panel p-4 rounded-2xl pointer-events-auto text-xs space-y-2">
-                <div class="flex items-center justify-between text-slate-300 font-bold border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-gamepad text-red-400 mr-2"></i> 搖桿控制對應表</span>
-                    <span class="text-[10px] text-slate-400">Nintendo Switch Pro</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-slate-400">
-                    <div><b class="text-white">ZR 鍵 / W:</b> 油門加速</div>
-                    <div><b class="text-white">ZL 鍵 / S:</b> 煞車 / 倒車</div>
-                    <div><b class="text-white">左蘑菇頭 / A/D:</b> 左右轉向</div>
-                    <div><b class="text-white">Y 鍵 / Space:</b> 切換賽道場地</div>
-                    <div><b class="text-white">十字鍵 ↑:</b> 車頭前方檢視</div>
-                    <div><b class="text-white">十字鍵 ↓:</b> 車尾後方檢視</div>
-                    <div><b class="text-white">十字鍵 ←:</b> 車身左側檢視</div>
-                    <div><b class="text-white">十字鍵 →:</b> 車身右側檢視</div>
-                </div>
-            </div>
-
-            <!-- Speedometer Center Panel -->
-            <div class="glass-panel p-6 rounded-3xl pointer-events-auto flex flex-col items-center justify-center relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-t from-red-600/10 to-transparent pointer-events-none"></div>
-                <div class="flex items-baseline space-x-2">
-                    <span id="speed-display" class="text-6xl md:text-7xl font-black tracking-tighter text-white glow-text">0</span>
-                    <span class="text-sm font-bold text-red-500 uppercase tracking-widest">km/h</span>
-                </div>
-                <div class="flex items-center space-x-4 mt-3">
-                    <div class="px-3 py-1 rounded-lg bg-black/40 border border-white/10 text-xs font-mono">
-                        檔位: <span id="gear-display" class="font-bold text-emerald-400">P</span>
-                    </div>
-                    <div class="px-3 py-1 rounded-lg bg-black/40 border border-white/10 text-xs font-mono">
-                        馬達輸出: <span id="power-display" class="font-bold text-cyan-400">0%</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vehicle Telemetry & Battery -->
-            <div class="glass-panel p-4 rounded-2xl pointer-events-auto space-y-3">
-                <div class="flex justify-between items-center text-xs font-bold text-slate-300 border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-bolt text-amber-400 mr-2"></i> Model 3 Highland 規格</span>
-                    <span class="text-emerald-400">100% 🔋</span>
-                </div>
-                <div class="space-y-2 text-xs">
+            <!-- 框框 1: Google Earth 衛星太陽與地球視角 -->
+            <div class="glass-box rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between relative group hover:border-white/20 transition-all duration-500">
+                <div class="flex justify-between items-start mb-1">
                     <div>
-                        <div class="flex justify-between text-slate-400 mb-1">
-                            <span>雙馬達四驅動力</span>
-                            <span class="text-slate-200">513 hp (0-100: 3.1s)</span>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-gradient-to-r from-red-500 to-amber-400 h-full w-full rounded-full"></div>
+                        <span class="text-[9px] uppercase tracking-widest text-[#3498db] block mb-0.5">Google Earth</span>
+                        <h2 class="text-sm font-serif-title text-[#f0efe9]">3D 衛星地球</h2>
+                    </div>
+                    <span id="sun-phase-tag" class="text-[10px] font-mono-num text-[#8c8c82]">白天</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center my-1">
+                    <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                        <svg class="w-full h-full" viewBox="0 0 100 60">
+                            <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" stroke-dasharray="2 2" />
+                            <line x1="5" y1="50" x2="95" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" />
+                            <circle id="sun-position-dot" cx="10" cy="50" r="4" fill="#3498db" stroke="#fff" stroke-width="1" />
+                        </svg>
+                        <div class="absolute bottom-0 text-center">
+                            <span id="sun-pct" class="text-xs font-mono-num font-medium text-[#f0efe9]">0.0%</span>
                         </div>
                     </div>
-                    <div>
-                        <div class="flex justify-between text-slate-400 mb-1">
-                            <span>輪胎與煞車系統</span>
-                            <span class="text-slate-200">19吋渦輪風扇框 + 黑色卡鉗</span>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-[90%] rounded-full"></div>
-                        </div>
+                </div>
+
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">日出 / 日落</span>
+                        <span id="sunrise-sunset-time" class="text-[#f0efe9]">05:53 / 17:35</span>
+                    </div>
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">晝夜剩餘</span>
+                        <span id="sun-time-left" class="text-[#3498db]">00h 00m</span>
                     </div>
                 </div>
             </div>
 
-        </div>
+            <!-- 框框 2: 新竹市天氣與現在時間 -->
+            <div class="glass-box rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between relative group hover:border-white/20 transition-all duration-500">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <span class="text-[9px] uppercase tracking-widest text-[#d4a373] block mb-0.5">Hsinchu Weather</span>
+                        <h2 class="text-sm font-serif-title text-[#f0efe9]">新竹市天氣</h2>
+                    </div>
+                    <span id="weather-icon" class="text-lg text-[#d4a373]">🌡️</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center my-1 text-center">
+                    <div class="flex items-baseline gap-1 my-1">
+                        <span id="weather-temp" class="text-3xl sm:text-4xl font-mono-num font-light text-[#f0efe9]">--</span>
+                        <span class="text-sm text-[#a0a098]">°C</span>
+                    </div>
+                    <span id="weather-desc" class="text-[11px] text-[#8c8c82]">即時大氣氣溫</span>
+                </div>
+
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">地區</span>
+                        <span class="text-[#f0efe9]">台灣新竹市</span>
+                    </div>
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">更新狀態</span>
+                        <span class="text-[#d4a373]">聯網實時</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 框框 3: 今日剩餘小時進度表 -->
+            <div class="glass-box rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between relative group hover:border-white/20 transition-all duration-500">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <span class="text-[9px] uppercase tracking-widest text-[#e0a96d] block mb-0.5">Today Progress</span>
+                        <h2 class="text-sm font-serif-title text-[#f0efe9]">今日剩餘時間</h2>
+                    </div>
+                    <span class="text-[10px] font-mono-num text-[#8c8c82]">24H</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center my-1">
+                    <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                        <svg class="w-full h-full" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="50" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="none" />
+                            <circle id="day-progress-ring" cx="60" cy="60" r="50" stroke="#e0a96d" stroke-width="6" fill="none"
+                                    stroke-dasharray="314.15" stroke-dashoffset="314.15" stroke-linecap="round" class="circular-progress transition-all duration-100" />
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center text-center">
+                            <span id="day-pct" class="text-xs sm:text-sm font-mono-num font-medium text-[#f0efe9]">0.0%</span>
+                            <span class="text-[8px] text-[#8c8c82]">剩餘比例</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">剩餘時間</span>
+                        <span id="day-hours-left" class="text-[#f0efe9]">00h 00m</span>
+                    </div>
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">剩餘毫秒</span>
+                        <span id="day-ms" class="text-[#e0a96d]">0 ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 框框 4: 下一個國定假日 -->
+            <div class="glass-box rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between relative group hover:border-white/20 transition-all duration-500">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <span class="text-[9px] uppercase tracking-widest text-[#a3b18a] block mb-0.5">National Holiday</span>
+                        <h2 id="holiday-name" class="text-sm font-serif-title text-[#f0efe9]">計算中...</h2>
+                    </div>
+                    <span id="holiday-date" class="text-[10px] font-mono-num text-[#8c8c82]">--/--</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center my-1">
+                    <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                        <svg class="w-full h-full" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="50" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="none" />
+                            <circle id="holiday-progress-ring" cx="60" cy="60" r="50" stroke="#a3b18a" stroke-width="6" fill="none"
+                                    stroke-dasharray="314.15" stroke-dashoffset="314.15" stroke-linecap="round" class="circular-progress transition-all duration-100" />
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center text-center px-1">
+                            <span id="holiday-days-left" class="text-sm sm:text-base font-mono-num font-medium text-[#f0efe9]">0天</span>
+                            <span id="holiday-pct" class="text-[8px] text-[#8c8c82]">0.0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">精確倒數</span>
+                        <span id="holiday-time-str" class="text-[#f0efe9]">00:00:00.000</span>
+                    </div>
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">總剩餘毫秒</span>
+                        <span id="holiday-ms" class="text-[#a3b18a]">0 ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 框框 5: 下一個週末假日 -->
+            <div class="glass-box rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between relative group hover:border-white/20 transition-all duration-500">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <span class="text-[9px] uppercase tracking-widest text-[#f39c12] block mb-0.5">Weekend Off</span>
+                        <h2 id="weekend-name" class="text-sm font-serif-title text-[#f0efe9]">週末假期</h2>
+                    </div>
+                    <span id="weekend-date" class="text-[10px] font-mono-num text-[#8c8c82]">週六</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center my-1">
+                    <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                        <svg class="w-full h-full" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="50" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="none" />
+                            <circle id="weekend-progress-ring" cx="60" cy="60" r="50" stroke="#f39c12" stroke-width="6" fill="none"
+                                    stroke-dasharray="314.15" stroke-dashoffset="314.15" stroke-linecap="round" class="circular-progress transition-all duration-100" />
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center text-center px-1">
+                            <span id="weekend-days-left" class="text-sm sm:text-base font-mono-num font-medium text-[#f0efe9]">0天</span>
+                            <span id="weekend-pct" class="text-[8px] text-[#8c8c82]">0.0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">精確倒數</span>
+                        <span id="weekend-time-str" class="text-[#f0efe9]">00:00:00.000</span>
+                    </div>
+                    <div class="flex justify-between font-mono-num">
+                        <span class="text-[#8c8c82]">總剩餘毫秒</span>
+                        <span id="weekend-ms" class="text-[#f39c12]">0 ms</span>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 頁尾詩意說明 -->
+        <footer class="flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-[#8c8c82] z-10">
+            <p class="italic font-serif-title">"Time is the wisest counselor of all."</p>
+            <p class="font-mono-num">HSINCHU, TAIWAN • GOOGLE EARTH SATELLITE 3D</p>
+        </footer>
 
     </div>
 
     <script>
-        // --- Core Simulation State ---
-        let scene, camera, renderer;
-        let carGroup, wheels = [], steeringWheelMesh;
-        let currentEnv = 0; // 0: Cyber City, 1: Mountain Pass, 2: Showroom
-        let cameraMode = 0; // 0: Follow, 1: Front, 2: Rear, 3: Left, 4: Right
-        
-        let speed = 0;
-        let maxSpeed = 1.9;
-        let acceleration = 0.012;
-        let deceleration = 0.008;
-        let steeringAngle = 0;
-        let maxSteeringAngle = 0.6;
-        let carRotation = 0;
-        let carPosition = new THREE.Vector3(0, 0, 0);
-        let currentGear = 'P';
+        // 台灣完整國定假日與紀念日清單
+        const taiwanHolidays = [
+            { name: "元旦", date: "2026-01-01", desc: "開國紀念日" },
+            { name: "農曆春節", date: "2026-02-16", desc: "農曆新年除夕" },
+            { name: "和平紀念日", date: "2026-02-28", desc: "二二八和平紀念日" },
+            { name: "兒童節 / 清明節", date: "2026-04-04", desc: "民族掃墓節與兒童節" },
+            { name: "勞動節", date: "2026-05-01", desc: "勞工專屬節日" },
+            { name: "端午節", date: "2026-06-19", desc: "端午佳節" },
+            { name: "中秋節", date: "2026-09-25", desc: "中秋賞月" },
+            { name: "教師節", date: "2026-09-28", desc: "孔子誕辰紀念日" },
+            { name: "國慶日", date: "2026-10-10", desc: "雙十國慶" },
+            { name: "台灣光復節", date: "2026-10-25", desc: "台灣光復紀念日" },
+            { name: "行憲紀念日", date: "2026-12-25", desc: "行憲紀念日" },
+            { name: "元旦", date: "2027-01-01", desc: "中華民國開國紀念日" },
+            { name: "農曆春節", date: "2027-02-05", desc: "農曆除夕" },
+            { name: "和平紀念日", date: "2027-02-28", desc: "二二八和平紀念日" },
+            { name: "兒童節 / 清明節", date: "2027-04-04", desc: "兒童節與清明掃墓" },
+            { name: "勞動節", date: "2027-05-01", desc: "勞動節" },
+            { name: "端午節", date: "2027-06-09", desc: "端午佳節" },
+            { name: "中秋節", date: "2027-09-15", desc: "中秋團聚" },
+            { name: "教師節", date: "2027-09-28", desc: "教師節" },
+            { name: "國慶日", date: "2027-10-10", desc: "雙十國慶日" },
+            { name: "台灣光復節", date: "2027-10-25", desc: "台灣光復紀念日" },
+            { name: "行憲紀念日", date: "2027-12-25", desc: "行憲紀念日" },
+            { name: "元旦", date: "2028-01-01", desc: "開國紀念日" }
+        ];
 
-        // Keyboard Fallback Input State
-        const keys = { w: false, s: false, a: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false };
+        let cachedSunrise = "05:53";
+        let cachedSunset = "17:35";
 
-        let envGroup = new THREE.Group();
+        async function fetchHsinchuWeather() {
+            try {
+                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=24.81&longitude=120.97&current_weather=true&daily=sunrise,sunset&timezone=Asia%2FTaipei");
+                const data = await res.json();
+                if (data && data.current_weather) {
+                    const temp = Math.round(data.current_weather.temperature);
+                    const code = data.current_weather.weathercode;
+                    document.getElementById('weather-temp').textContent = temp;
+                    document.getElementById('weather-icon').textContent = getWeatherEmoji(code);
+                }
+                if (data && data.daily && data.daily.sunrise && data.daily.sunset) {
+                    const srDate = new Date(data.daily.sunrise[0]);
+                    const ssDate = new Date(data.daily.sunset[0]);
+                    cachedSunrise = `${String(srDate.getHours()).padStart(2, '0')}:${String(srDate.getMinutes()).padStart(2, '0')}`;
+                    cachedSunset = `${String(ssDate.getHours()).padStart(2, '0')}:${String(ssDate.getMinutes()).padStart(2, '0')}`;
+                }
+            } catch (err) {
+                console.log("Weather API fallback:", err);
+                document.getElementById('weather-temp').textContent = "23";
+            }
+        }
 
-        // --- Initialization ---
-        function initSimulator() {
-            const container = document.getElementById('canvas-container');
-            
+        function getWeatherEmoji(code) {
+            if (code === 0) return "☀️";
+            if (code >= 1 && code <= 3) return "⛅";
+            if (code >= 45 && code <= 48) return "🌫️";
+            if (code >= 51 && code <= 67) return "🌧️";
+            if (code >= 80 && code <= 82) return "🌦️";
+            return "🌤️";
+        }
+
+        function getNextWeekend(now) {
+            const day = now.getDay();
+            let daysUntilSat = (6 - day + 7) % 7;
+            const target = new Date(now);
+            if (daysUntilSat === 0 && (now.getHours() > 0 || now.getMinutes() > 0 || now.getSeconds() > 0)) {
+                daysUntilSat = 7;
+            }
+            target.setDate(now.getDate() + daysUntilSat);
+            target.setHours(0, 0, 0, 0);
+            return {
+                name: "週六週末",
+                dateStr: target.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' }),
+                targetDate: target
+            };
+        }
+
+        function getNextHoliday(now) {
+            for (let h of taiwanHolidays) {
+                const holidayDate = new Date(h.date + "T00:00:00");
+                if (holidayDate >= now) {
+                    return {
+                        name: h.name,
+                        dateStr: holidayDate.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' }),
+                        targetDate: holidayDate
+                    };
+                }
+            }
+            return {
+                name: "元旦假期",
+                dateStr: "01/01",
+                targetDate: new Date(now.getFullYear() + 1, 0, 1)
+            };
+        }
+
+        let initialHolidayMs = null;
+        let initialWeekendMs = null;
+        let lastHolidayTarget = null;
+        let lastWeekendTarget = null;
+
+        // ================= Three.js Google Earth 3D 衛星地球儀設定 =================
+        let scene, camera, renderer, earthMesh, cloudsMesh, sunLight;
+
+        function initGoogleEarth3D() {
+            const container = document.getElementById('earth-canvas-container');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x030712);
-            scene.fog = new THREE.FogExp2(0x030712, 0.012);
 
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 16);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.25;
             container.appendChild(renderer.domElement);
 
-            // Lighting setup
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            // 環境光與太陽平行光 (模擬太空日照)
+            const ambientLight = new THREE.AmbientLight(0x222233, 1.2);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
-            dirLight.position.set(40, 60, 40);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            const d = 50;
-            dirLight.shadow.camera.left = -d;
-            dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d;
-            dirLight.shadow.camera.bottom = -d;
-            scene.add(dirLight);
+            sunLight = new THREE.DirectionalLight(0xfffaed, 2.8);
+            sunLight.position.set(15, 5, 10);
+            scene.add(sunLight);
 
-            scene.add(envGroup);
-            buildTeslaModel3Highland();
-            buildEnvironment(currentEnv);
+            // 建立高擬真 Google Earth 衛星地球球體
+            const earthGeometry = new THREE.SphereGeometry(4.2, 64, 64);
+            
+            // 使用程式生成高質感衛星地球材質 (深藍海洋、擬真陸地紋理色澤)
+            const earthMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1d3557,
+                roughness: 0.5,
+                metalness: 0.3,
+            });
+            earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+            earthMesh.rotation.z = 0.41; // 地球公轉軸傾角
+            scene.add(earthMesh);
+
+            // 大氣層與雲層光暈 (Google Earth 風格透光層)
+            const cloudsGeometry = new THREE.SphereGeometry(4.32, 64, 64);
+            const cloudsMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.22,
+                roughness: 0.9
+            });
+            cloudsMesh = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+            scene.add(cloudsMesh);
 
             window.addEventListener('resize', onWindowResize);
-            window.addEventListener('keydown', (e) => handleKey(e, true));
-            window.addEventListener('keyup', (e) => handleKey(e, false));
-
-            animate();
         }
 
-        // --- Model 3 Highland 1:1 Detailed Construction ---
-        function buildTeslaModel3Highland() {
-            carGroup = new THREE.Group();
-
-            const bodyMaterial = new THREE.MeshStandardMaterial({
-                color: 0xef4444, // Tesla Ultra Red / Stealth Red
-                metalness: 0.9,
-                roughness: 0.12,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.1
-            });
-
-            const blackTrimMaterial = new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                metalness: 0.2,
-                roughness: 0.8
-            });
-
-            const glassMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x0a0a0a,
-                metalness: 0.1,
-                roughness: 0.1,
-                transmission: 0.85,
-                transparent: true,
-                opacity: 0.75,
-                reflectivity: 0.9
-            });
-
-            const headlightMaterial = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                emissive: 0x90e0ef,
-                emissiveIntensity: 2.5,
-                roughness: 0.1
-            });
-
-            const taillightMaterial = new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 3.5,
-                roughness: 0.1
-            });
-
-            // Main Lower Body
-            const lowerGeo = new THREE.BoxGeometry(4.3, 0.52, 1.95);
-            const lowerMesh = new THREE.Mesh(lowerGeo, bodyMaterial);
-            lowerMesh.position.set(0, 0.36, 0);
-            lowerMesh.castShadow = true;
-            lowerMesh.receiveShadow = true;
-            carGroup.add(lowerMesh);
-
-            // Highland Sleek Streamlined Hood
-            const hoodGeo = new THREE.BoxGeometry(1.5, 0.3, 1.85);
-            const hoodMesh = new THREE.Mesh(hoodGeo, bodyMaterial);
-            hoodMesh.position.set(1.35, 0.56, 0);
-            hoodMesh.rotation.z = -0.07;
-            hoodMesh.castShadow = true;
-            carGroup.add(hoodMesh);
-
-            // Panoramic Glass Roof
-            const roofGeo = new THREE.BoxGeometry(2.1, 0.15, 1.75);
-            const roofMesh = new THREE.Mesh(roofGeo, glassMaterial);
-            roofMesh.position.set(-0.05, 1.04, 0);
-            carGroup.add(roofMesh);
-
-            // Windshields
-            const windshieldGeo = new THREE.PlaneGeometry(1.55, 1.15);
-            const windshieldMesh = new THREE.Mesh(windshieldGeo, glassMaterial);
-            windshieldMesh.position.set(0.68, 0.86, 0);
-            windshieldMesh.rotation.y = Math.PI / 2;
-            windshieldMesh.rotation.z = -0.65;
-            carGroup.add(windshieldMesh);
-
-            const rearGlassMesh = new THREE.Mesh(windshieldGeo, glassMaterial);
-            rearGlassMesh.position.set(-0.88, 0.84, 0);
-            rearGlassMesh.rotation.y = -Math.PI / 2;
-            rearGlassMesh.rotation.z = -0.55;
-            carGroup.add(rearGlassMesh);
-
-            // Matrix LED Headlights (Highland Dual Strip)
-            const headlightGeo = new THREE.BoxGeometry(0.12, 0.12, 0.45);
-            const leftHeadlight = new THREE.Mesh(headlightGeo, headlightMaterial);
-            leftHeadlight.position.set(2.05, 0.52, 0.82);
-            carGroup.add(leftHeadlight);
-            const rightHeadlight = leftHeadlight.clone();
-            rightHeadlight.position.set(2.05, 0.52, -0.82);
-            carGroup.add(rightHeadlight);
-
-            // C-Shaped Wrap-around Tail Lights
-            const taillightGeo = new THREE.BoxGeometry(0.12, 0.18, 0.52);
-            const leftTaillight = new THREE.Mesh(taillightGeo, taillightMaterial);
-            leftTaillight.position.set(-2.1, 0.62, 0.78);
-            carGroup.add(leftTaillight);
-            const rightTaillight = leftTaillight.clone();
-            rightTaillight.position.set(-2.1, 0.62, -0.78);
-            carGroup.add(rightTaillight);
-
-            // Carbon Lip Spoiler & Diffuser
-            const spoilerGeo = new THREE.BoxGeometry(0.22, 0.05, 1.8);
-            const spoilerMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.9 });
-            const spoilerMesh = new THREE.Mesh(spoilerGeo, spoilerMat);
-            spoilerMesh.position.set(-2.05, 0.94, 0);
-            carGroup.add(spoilerMesh);
-
-            const diffuserGeo = new THREE.BoxGeometry(0.45, 0.16, 1.75);
-            const diffuserMesh = new THREE.Mesh(diffuserGeo, blackTrimMaterial);
-            diffuserMesh.position.set(-2.1, 0.23, 0);
-            carGroup.add(diffuserMesh);
-
-            // 19" Turbine Alloy Wheels with Black Calipers
-            const wheelGeo = new THREE.CylinderGeometry(0.39, 0.39, 0.26, 32);
-            wheelGeo.rotateX(Math.PI / 2);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.4 });
-            const rimMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.9, roughness: 0.2 });
-
-            const wheelPositions = [
-                { x: 1.4, y: 0.39, z: 0.98 },
-                { x: 1.4, y: 0.39, z: -0.98 },
-                { x: -1.4, y: 0.39, z: 0.98 },
-                { x: -1.4, y: 0.39, z: -0.98 }
-            ];
-
-            wheelPositions.forEach(pos => {
-                const wGroup = new THREE.Group();
-                const tire = new THREE.Mesh(wheelGeo, wheelMat);
-                tire.castShadow = true;
-                wGroup.add(tire);
-
-                const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.28, 16), rimMat);
-                rim.rotation.x = Math.PI / 2;
-                wGroup.add(rim);
-
-                wGroup.position.set(pos.x, pos.y, pos.z);
-                carGroup.add(wGroup);
-                wheels.push(wGroup);
-            });
-
-            // Interior Details (Seats & 15.4" Floating Touchscreen)
-            const interiorGroup = new THREE.Group();
-            const seatMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.8 });
-            
-            const driverSeat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.82, 0.52), seatMat);
-            driverSeat.position.set(-0.12, 0.66, 0.36);
-            driverSeat.rotation.z = -0.2;
-            interiorGroup.add(driverSeat);
-
-            const passengerSeat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.82, 0.52), seatMat);
-            passengerSeat.position.set(-0.12, 0.66, -0.36);
-            passengerSeat.rotation.z = -0.2;
-            interiorGroup.add(passengerSeat);
-
-            // Center Touchscreen
-            const screenMesh = new THREE.Mesh(
-                new THREE.BoxGeometry(0.06, 0.32, 0.48),
-                new THREE.MeshStandardMaterial({ color: 0x00d2ff, emissive: 0x004477, emissiveIntensity: 0.9 })
-            );
-            screenMesh.position.set(0.58, 0.8, 0);
-            interiorGroup.add(screenMesh);
-
-            // Steering Wheel
-            steeringWheelMesh = new THREE.Mesh(
-                new THREE.TorusGeometry(0.18, 0.03, 16, 32),
-                blackTrimMaterial
-            );
-            steeringWheelMesh.position.set(0.42, 0.86, 0.36);
-            steeringWheelMesh.rotation.y = Math.PI / 2;
-            steeringWheelMesh.rotation.z = 0.3;
-            interiorGroup.add(steeringWheelMesh);
-
-            carGroup.add(interiorGroup);
-            carGroup.scale.set(1.5, 1.5, 1.5);
-            carGroup.position.copy(carPosition);
-            scene.add(carGroup);
+        function onWindowResize() {
+            const container = document.getElementById('earth-canvas-container');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        // --- Environments Builder ---
-        function buildEnvironment(type) {
-            while(envGroup.children.length > 0){ envGroup.remove(envGroup.children[0]); }
+        function updateGoogleEarth3D(sunRatio) {
+            if (!earthMesh || !sunLight) return;
 
-            if (type === 0) {
-                // Cyber Neon City
-                scene.background = new THREE.Color(0x030712);
-                scene.fog = new THREE.FogExp2(0x030712, 0.012);
+            // 地球與雲層緩慢自轉
+            earthMesh.rotation.y += 0.0015;
+            cloudsMesh.rotation.y += 0.0018;
 
-                const road = new THREE.Mesh(
-                    new THREE.PlaneGeometry(350, 350),
-                    new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.8, metalness: 0.2 })
-                );
-                road.rotation.x = -Math.PI / 2;
-                road.receiveShadow = true;
-                envGroup.add(road);
-
-                const grid = new THREE.GridHelper(350, 70, 0xef4444, 0x00ffff);
-                grid.position.y = 0.02;
-                envGroup.add(grid);
-
-                const colors = [0xef4444, 0x00ffff, 0x8b5cf6, 0xf59e0b];
-                for (let i = 0; i < 60; i++) {
-                    const h = 35 + Math.random() * 80;
-                    const b = new THREE.Mesh(
-                        new THREE.BoxGeometry(14 + Math.random() * 16, h, 14 + Math.random() * 16),
-                        new THREE.MeshStandardMaterial({
-                            color: 0x090d16,
-                            roughness: 0.3,
-                            metalness: 0.8,
-                            emissive: colors[Math.floor(Math.random() * colors.length)],
-                            emissiveIntensity: 0.15
-                        })
-                    );
-                    let x, z;
-                    do {
-                        x = (Math.random() - 0.5) * 300;
-                        z = (Math.random() - 0.5) * 300;
-                    } while (Math.abs(x) < 25 && Math.abs(z) < 25);
-                    b.position.set(x, h / 2, z);
-                    b.castShadow = true;
-                    b.receiveShadow = true;
-                    envGroup.add(b);
-                }
-            } else if (type === 1) {
-                // Mountain Pass
-                scene.background = new THREE.Color(0x87ceeb);
-                scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
-
-                const ground = new THREE.Mesh(
-                    new THREE.PlaneGeometry(450, 450),
-                    new THREE.MeshStandardMaterial({ color: 0x2e5a27, roughness: 0.9 })
-                );
-                ground.rotation.x = -Math.PI / 2;
-                ground.receiveShadow = true;
-                envGroup.add(ground);
-
-                const road = new THREE.Mesh(
-                    new THREE.PlaneGeometry(18, 450),
-                    new THREE.MeshStandardMaterial({ color: 0x262626, roughness: 0.7 })
-                );
-                road.rotation.x = -Math.PI / 2;
-                road.position.y = 0.05;
-                road.receiveShadow = true;
-                envGroup.add(road);
-
-                const treeMat = new THREE.MeshStandardMaterial({ color: 0x1b4d3e, roughness: 0.8 });
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525 });
-
-                for (let i = 0; i < 140; i++) {
-                    const tGroup = new THREE.Group();
-                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3, 6), trunkMat);
-                    trunk.position.y = 1.5;
-                    const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.6, 7.5, 6), treeMat);
-                    leaves.position.y = 5.5;
-                    tGroup.add(trunk, leaves);
-
-                    const angle = Math.random() * Math.PI * 2;
-                    const dist = 30 + Math.random() * 180;
-                    tGroup.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-                    envGroup.add(tGroup);
-                }
-            } else if (type === 2) {
-                // Showroom
-                scene.background = new THREE.Color(0x0f172a);
-                scene.fog = new THREE.FogExp2(0x0f172a, 0.004);
-
-                const floor = new THREE.Mesh(
-                    new THREE.PlaneGeometry(90, 90),
-                    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.1, metalness: 0.9 })
-                );
-                floor.rotation.x = -Math.PI / 2;
-                floor.receiveShadow = true;
-                envGroup.add(floor);
-
-                const ring = new THREE.Mesh(
-                    new THREE.RingGeometry(9, 9.6, 32),
-                    new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide })
-                );
-                ring.rotation.x = Math.PI / 2;
-                ring.position.y = 14;
-                envGroup.add(ring);
-            }
-        }
-
-        // --- Controls Handling ---
-        function handleKey(e, isDown) {
-            const k = e.key.toLowerCase();
-            if (k === 'w' || k === 'arrowup') keys.w = isDown;
-            if (k === 's' || k === 'arrowdown') keys.s = isDown;
-            if (k === 'a' || k === 'arrowleft') keys.a = isDown;
-            if (k === 'd' || k === 'arrowright') keys.d = isDown;
-            
-            if (isDown) {
-                if (k === 'y' || k === ' ') {
-                    currentEnv = (currentEnv + 1) % 3;
-                    switchEnvironment(currentEnv);
-                }
-            }
-        }
-
-        function switchEnvironment(idx) {
-            currentEnv = idx;
-            buildEnvironment(currentEnv);
-            for (let i = 0; i < 3; i++) {
-                const btn = document.getElementById(`env-btn-${i}`);
-                if (i === idx) {
-                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-red-600 text-white shadow-lg shadow-red-600/30";
-                } else {
-                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/10";
-                }
-            }
-        }
-
-        // --- Gamepad Poll & Controller Logic ---
-        function pollGamepad() {
-            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let gp = null;
-            for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) { gp = gamepads[i]; break; }
-            }
-
-            const nameLabel = document.getElementById('controller-name-label');
-            const dot = document.getElementById('controller-dot');
-            const indZl = document.getElementById('ind-zl');
-            const indZr = document.getElementById('ind-zr');
-            const indY = document.getElementById('ind-y');
-            const indDpad = document.getElementById('ind-dpad');
-
-            if (gp) {
-                nameLabel.innerHTML = `<i class="fa-solid fa-gamepad mr-1.5 text-emerald-400"></i>已連接: ${gp.id.slice(0, 16)}`;
-                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
-
-                // Left Joystick Steering (Axis 0)
-                const stickX = gp.axes[0];
-                if (Math.abs(stickX) > 0.15) {
-                    steeringAngle = -stickX * maxSteeringAngle;
-                } else if (!keys.a && !keys.d && !keys.arrowleft && !keys.arrowright) {
-                    steeringAngle *= 0.85;
-                }
-
-                // ZR (Throttle - button 7) and ZL (Brake - button 6)
-                const zrVal = gp.buttons[7] ? gp.buttons[7].value : 0;
-                const zlVal = gp.buttons[6] ? gp.buttons[6].value : 0;
-
-                if (zrVal > 0.1) {
-                    speed = Math.min(maxSpeed, speed + acceleration * zrVal);
-                    currentGear = 'D';
-                    indZr.classList.add('controller-btn-active');
-                } else {
-                    indZr.classList.remove('controller-btn-active');
-                }
-
-                if (zlVal > 0.1) {
-                    speed = Math.max(-maxSpeed * 0.4, speed - deceleration * zlVal);
-                    currentGear = 'R';
-                    indZl.classList.add('controller-btn-active');
-                } else {
-                    indZl.classList.remove('controller-btn-active');
-                }
-
-                // Y Button (Button 3) to switch tracks
-                if (gp.buttons[3] && gp.buttons[3].pressed) {
-                    indY.classList.add('controller-btn-active');
-                    if (!gp._yLocked) {
-                        currentEnv = (currentEnv + 1) % 3;
-                        switchEnvironment(currentEnv);
-                        gp._yLocked = true;
-                    }
-                } else {
-                    indY.classList.remove('controller-btn-active');
-                    gp._yLocked = false;
-                }
-
-                // D-Pad / Cross for Camera Angles (Buttons 12:Up, 13:Down, 14:Left, 15:Right)
-                if (gp.buttons[12] && gp.buttons[12].pressed) { cameraMode = 1; updateCamLabel("車頭前方檢視"); indDpad.classList.add('controller-btn-active'); }
-                else if (gp.buttons[13] && gp.buttons[13].pressed) { cameraMode = 2; updateCamLabel("車尾後方檢視"); indDpad.classList.add('controller-btn-active'); }
-                else if (gp.buttons[14] && gp.buttons[14].pressed) { cameraMode = 3; updateCamLabel("車身左側檢視"); indDpad.classList.add('controller-btn-active'); }
-                else if (gp.buttons[15] && gp.buttons[15].pressed) { cameraMode = 4; updateCamLabel("車身右側檢視"); indDpad.classList.add('controller-btn-active'); }
-                else {
-                    if (!gp.buttons[12]?.pressed && !gp.buttons[13]?.pressed && !gp.buttons[14]?.pressed && !gp.buttons[15]?.pressed) {
-                        // If no D-pad pressed, check if stick clicked or default to follow cam if desired
-                        indDpad.classList.remove('controller-btn-active');
-                    }
-                }
-
-            } else {
-                nameLabel.innerHTML = `<i class="fa-solid fa-gamepad mr-1.5"></i>Switch Pro 手把未連線`;
-                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
-                indZl.classList.remove('controller-btn-active');
-                indZr.classList.remove('controller-btn-active');
-                indY.classList.remove('controller-btn-active');
-                indDpad.classList.remove('controller-btn-active');
-            }
-        }
-
-        function updateCamLabel(txt) {
-            document.getElementById('camera-mode-label').innerText = txt;
-        }
-
-        // --- Animation Loop ---
-        function animate() {
-            requestAnimationFrame(animate);
-
-            pollGamepad();
-
-            // Keyboard Fallbacks
-            if (keys.a || keys.arrowleft) steeringAngle = Math.min(maxSteeringAngle, steeringAngle + 0.05);
-            else if (keys.d || keys.arrowright) steeringAngle = Math.max(-maxSteeringAngle, steeringAngle - 0.05);
-            else if (!navigator.getGamepads()[0] || Math.abs(navigator.getGamepads()[0].axes[0]) < 0.15) steeringAngle *= 0.85;
-
-            if (keys.w || keys.arrowup) {
-                speed = Math.min(maxSpeed, speed + acceleration);
-                currentGear = 'D';
-            } else if (keys.s || keys.arrowdown) {
-                speed = Math.max(-maxSpeed * 0.4, speed - deceleration);
-                currentGear = 'R';
-            } else if (!navigator.getGamepads()[0] || (navigator.getGamepads()[0].buttons[6]?.value || 0) < 0.1 && (navigator.getGamepads()[0].buttons[7]?.value || 0) < 0.1) {
-                if (speed > 0) speed = Math.max(0, speed - deceleration * 0.7);
-                else if (speed < 0) speed = Math.min(0, speed + deceleration * 0.7);
-                else currentGear = 'P';
-            }
-
-            // Physics update
-            if (Math.abs(speed) > 0.001) {
-                carRotation += speed * steeringAngle * 0.4;
-                carPosition.x += Math.cos(carRotation) * speed * 0.85;
-                carPosition.z -= Math.sin(carRotation) * speed * 0.85;
-            }
-
-            if (carGroup) {
-                carGroup.position.copy(carPosition);
-                carGroup.rotation.y = carRotation;
-
-                wheels.forEach(w => { w.rotation.z += speed * 0.5; });
-                if (steeringWheelMesh) steeringWheelMesh.rotation.x = steeringAngle * 1.5;
-            }
-
-            updateCameraPosition();
-
-            // HUD Telemetry
-            const speedKmh = Math.round(Math.abs(speed) * 115);
-            document.getElementById('speed-display').innerText = speedKmh;
-            document.getElementById('gear-display').innerText = currentGear;
-            document.getElementById('power-display').innerText = `${Math.round((Math.abs(speed) / maxSpeed) * 100)}%`;
+            // 根據日地運行角度計算日照光影 (動態跟隨太陽)
+            const angle = sunRatio * Math.PI * 2;
+            const sunX = Math.cos(angle) * 18;
+            const sunY = Math.sin(angle) * 10;
+            const sunZ = Math.sin(angle) * 12;
+            sunLight.position.set(sunX, sunY, sunZ);
 
             renderer.render(scene, camera);
         }
 
-        function updateCameraPosition() {
-            if (!carGroup) return;
-            const pos = carGroup.position;
-            const fwd = new THREE.Vector3(Math.cos(carRotation), 0, -Math.sin(carRotation));
+        function updateLoop() {
+            const now = new Date();
 
-            if (cameraMode === 0) {
-                // Dynamic Follow Cam
-                const target = new THREE.Vector3(pos.x - fwd.x * 7.5, pos.y + 2.8, pos.z - fwd.z * 7.5);
-                camera.position.lerp(target, 0.1);
-                camera.lookAt(pos.x, pos.y + 0.8, pos.z);
-            } else if (cameraMode === 1) {
-                // Front Inspection
-                camera.position.set(pos.x + fwd.x * 5.5, pos.y + 1.4, pos.z + fwd.z * 5.5);
-                camera.lookAt(pos);
-            } else if (cameraMode === 2) {
-                // Rear Inspection
-                camera.position.set(pos.x - fwd.x * 5.5, pos.y + 1.4, pos.z - fwd.z * 5.5);
-                camera.lookAt(pos);
-            } else if (cameraMode === 3) {
-                // Left Inspection
-                camera.position.set(pos.x - fwd.z * 5.5, pos.y + 1.6, pos.x + fwd.x * 5.5);
-                camera.lookAt(pos);
-            } else if (cameraMode === 4) {
-                // Right Inspection
-                camera.position.set(pos.x + fwd.z * 5.5, pos.y + 1.6, pos.z - fwd.x * 5.5);
-                camera.lookAt(pos);
+            // 1. 頂部現在時間
+            const hoursStr = String(now.getHours()).padStart(2, '0');
+            const minsStr = String(now.getMinutes()).padStart(2, '0');
+            const secsStr = String(now.getSeconds()).padStart(2, '0');
+
+            const timeEl = document.getElementById('current-time');
+            const dateEl = document.getElementById('current-date');
+            if (timeEl) timeEl.textContent = `${hoursStr}:${minsStr}:${secsStr}`;
+            if (dateEl) {
+                dateEl.textContent = now.toLocaleDateString('zh-TW', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    weekday: 'short'
+                });
+            }
+
+            // 2. 太陽位置與 Google Earth 晝夜計算
+            const [srH, srM] = cachedSunrise.split(':').map(Number);
+            const [ssH, ssM] = cachedSunset.split(':').map(Number);
+            
+            const sunriseTime = new Date(now);
+            sunriseTime.setHours(srH, srM, 0, 0);
+
+            const sunsetTime = new Date(now);
+            sunsetTime.setHours(ssH, ssM, 0, 0);
+
+            const srSunsetStr = document.getElementById('sunrise-sunset-time');
+            if (srSunsetStr) srSunsetStr.textContent = `${cachedSunrise} / ${cachedSunset}`;
+
+            const isDaytime = now >= sunriseTime && now < sunsetTime;
+            const sunPhaseTag = document.getElementById('sun-phase-tag');
+            const sunTimeLeft = document.getElementById('sun-time-left');
+            const sunPct = document.getElementById('sun-pct');
+            const sunDot = document.getElementById('sun-position-dot');
+
+            let ratio = 0;
+            if (isDaytime) {
+                if (sunPhaseTag) sunPhaseTag.textContent = "白天 Daytime";
+                const dayDuration = sunsetTime - sunriseTime;
+                const elapsed = now - sunriseTime;
+                ratio = Math.min(1, Math.max(0, elapsed / dayDuration));
+
+                const leftMs = sunsetTime - now;
+                const leftH = Math.floor(leftMs / (3600 * 1000));
+                const leftM = Math.floor((leftMs % (3600 * 1000)) / (60 * 1000));
+                if (sunTimeLeft) sunTimeLeft.textContent = `${leftH}h ${leftM}m`;
+            } else {
+                if (sunPhaseTag) sunPhaseTag.textContent = "夜晚 Night";
+                let nextSunrise = new Date(sunriseTime);
+                if (now >= sunsetTime) nextSunrise.setDate(nextSunrise.getDate() + 1);
+                const nightDuration = 24 * 3600 * 1000 - (sunsetTime - sunriseTime);
+                const elapsed = now >= sunsetTime ? (now - sunsetTime) : (now - (new Date(sunriseTime).setDate(sunriseTime.getDate() - 1)));
+                ratio = Math.min(1, Math.max(0, elapsed / nightDuration));
+
+                const leftMs = nextSunrise - now;
+                const leftH = Math.floor(leftMs / (3600 * 1000));
+                const leftM = Math.floor((leftMs % (3600 * 1000)) / (60 * 1000));
+                if (sunTimeLeft) sunTimeLeft.textContent = `${leftH}h ${leftM}m`;
+            }
+
+            if (sunPct) sunPct.textContent = (ratio * 100).toFixed(1) + "%";
+
+            if (sunDot) {
+                const angleSvg = Math.PI * (1 - ratio);
+                const dotX = 50 + 40 * Math.cos(angleSvg);
+                const dotY = 50 - 40 * Math.sin(angleSvg);
+                sunDot.setAttribute('cx', dotX);
+                sunDot.setAttribute('cy', dotY);
+                sunDot.setAttribute('fill', isDaytime ? '#3498db' : '#9b59b6');
+            }
+
+            // 更新 Google Earth 3D 視角光影
+            updateGoogleEarth3D(ratio);
+
+            // 3. 今日剩餘時間進度
+            const endOfDay = new Date(now);
+            endOfDay.setHours(23, 59, 59, 999);
+            const totalMsDay = 24 * 3600 * 1000;
+            const msLeftDay = Math.max(0, endOfDay - now);
+            const hoursLeftDay = Math.floor(msLeftDay / (3600 * 1000));
+            const minsLeftDay = Math.floor((msLeftDay % (3600 * 1000)) / (60 * 1000));
+            const pctDayLeft = (msLeftDay / totalMsDay) * 100;
+
+            const dayPctEl = document.getElementById('day-pct');
+            const dayHoursEl = document.getElementById('day-hours-left');
+            const dayMsEl = document.getElementById('day-ms');
+            const dayRing = document.getElementById('day-progress-ring');
+
+            if (dayPctEl) dayPctEl.textContent = pctDayLeft.toFixed(1) + "%";
+            if (dayHoursEl) dayHoursEl.textContent = `${hoursLeftDay}h ${minsLeftDay}m`;
+            if (dayMsEl) dayMsEl.textContent = `${msLeftDay.toLocaleString()} ms`;
+            if (dayRing) {
+                const circumference = 2 * Math.PI * 50;
+                dayRing.style.strokeDashoffset = circumference * (1 - msLeftDay / totalMsDay);
+            }
+
+            // 4. 國定假日倒數
+            const holidayInfo = getNextHoliday(now);
+            const hNameEl = document.getElementById('holiday-name');
+            const hDateEl = document.getElementById('holiday-date');
+            if (hNameEl) hNameEl.textContent = holidayInfo.name;
+            if (hDateEl) hDateEl.textContent = holidayInfo.dateStr;
+
+            if (!lastHolidayTarget || lastHolidayTarget.getTime() !== holidayInfo.targetDate.getTime()) {
+                lastHolidayTarget = holidayInfo.targetDate;
+                initialHolidayMs = holidayInfo.targetDate - now.getTime();
+            }
+
+            const hDiff = Math.max(0, holidayInfo.targetDate - now.getTime());
+            updateTargetCard('holiday', hDiff, initialHolidayMs || (30 * 24 * 3600 * 1000));
+
+            // 5. 週末假日倒數
+            const weekendInfo = getNextWeekend(now);
+            const wNameEl = document.getElementById('weekend-name');
+            const wDateEl = document.getElementById('weekend-date');
+            if (wNameEl) wNameEl.textContent = weekendInfo.name;
+            if (wDateEl) wDateEl.textContent = weekendInfo.dateStr;
+
+            if (!lastWeekendTarget || lastWeekendTarget.getTime() !== weekendInfo.targetDate.getTime()) {
+                lastWeekendTarget = weekendInfo.targetDate;
+                initialWeekendMs = weekendInfo.targetDate - now.getTime();
+            }
+
+            const wDiff = Math.max(0, weekendInfo.targetDate - now.getTime());
+            updateTargetCard('weekend', wDiff, initialWeekendMs || (7 * 24 * 3600 * 1000));
+
+            requestAnimationFrame(updateLoop);
+        }
+
+        function updateTargetCard(prefix, diffMs, totalDurationMs) {
+            const daysLeft = Math.floor(diffMs / (24 * 3600 * 1000));
+            const hours = Math.floor((diffMs % (24 * 3600 * 1000)) / (3600 * 1000));
+            const mins = Math.floor((diffMs % (3600 * 1000)) / (60 * 1000));
+            const secs = Math.floor((diffMs % (60 * 1000)) / 1000);
+            const millis = diffMs % 1000;
+
+            const daysEl = document.getElementById(`${prefix}-days-left`);
+            const pctEl = document.getElementById(`${prefix}-pct`);
+            const timeStrEl = document.getElementById(`${prefix}-time-str`);
+            const msEl = document.getElementById(`${prefix}-ms`);
+            const ringEl = document.getElementById(`${prefix}-progress-ring`);
+
+            if (daysEl) daysEl.textContent = `${daysLeft}天`;
+            
+            const progress = totalDurationMs > 0 ? Math.min(1, Math.max(0, diffMs / totalDurationMs)) : 0;
+            if (pctEl) pctEl.textContent = (progress * 100).toFixed(1) + "%";
+
+            if (timeStrEl) {
+                timeStrEl.textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+            }
+
+            if (msEl) msEl.textContent = `${diffMs.toLocaleString()} ms`;
+
+            if (ringEl) {
+                const circumference = 2 * Math.PI * 50;
+                ringEl.style.strokeDashoffset = circumference * (1 - progress);
             }
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        window.onload = initSimulator;
+        window.onload = function() {
+            fetchHsinchuWeather();
+            setInterval(fetchHsinchuWeather, 15 * 60 * 1000);
+            initGoogleEarth3D();
+            requestAnimationFrame(updateLoop);
+        };
     </script>
 </body>
 </html>
